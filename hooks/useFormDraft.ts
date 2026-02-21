@@ -1,31 +1,16 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import * as FileSystem from "expo-file-system";
+import { File, Paths } from "expo-file-system";
 import { useCallback, useEffect, useRef, useState } from "react";
-
-type EditEntry = {
-  path: string;
-  oldValue: any;
-  newValue: any;
-  at: string;
-};
-
-type FormMeta = {
-  savedAt?: string;
-  finalized?: boolean;
-  submitted?: boolean;
-  edits?: EditEntry[];
-  version?: number;
-  formId?: string;
-  instanceId?: string;
-  startedAt?: string;
-};
-
-type FormDraft<T> = {
-  data: T;
-  meta: FormMeta;
-};
-
-type StorageMode = "asyncstorage" | "filesystem";
+import { loadDraft, saveDraft } from "../utils/storage";
+import { SyncManager } from "../utils/sync";
+import {
+  EditEntry,
+  FormDraft,
+  FormDraftOptions,
+  FormMeta,
+  SyncStatus,
+} from "../utils/types";
+import { validateFormData } from "../utils/validation";
 
 const STORAGE_PREFIX = "odk_form_";
 const DEBOUNCE_MS = 800;
@@ -72,54 +57,23 @@ const getNestedValue = (obj: any, path: string): any => {
 };
 
 // Generate unique instance ID (ODK-style UUID)
-const generateInstanceId = () => {
-  return `uuid:${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-};
-
-// Storage adapter for filesystem
-const getFileUri = (key: string) => {
-  return `${Paths.document}${key}.json`;
-};
-
-const saveToFileSystem = async (key: string, data: string) => {
-  const uri = getFileUri(key);
-  await new File(uri, data);
-};
-
-const loadFromFileSystem = async (key: string): Promise<string | null> => {
-  try {
-    const uri = getFileUri(key);
-    const fileInfo = await FileSystem.getInfoAsync(uri);
-    if (fileInfo.exists) {
-      return await FileSystem.readAsStringAsync(uri);
-    }
-    return null;
-  } catch (e) {
-    return null;
-  }
-};
-
-const deleteFromFileSystem = async (key: string) => {
-  try {
-    const uri = getFileUri(key);
-    await FileSystem.deleteAsync(uri, { idempotent: true });
-  } catch (e) {
-    console.warn("Delete error:", e);
-  }
+const generateInstanceId = (): string => {
+  return `uuid:${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 };
 
 export const useFormDraft = <
   T extends Record<string, any> = Record<string, any>,
 >(
   formId: string,
-  opts?: {
-    maxEdits?: number;
-    onSaveError?: (error: Error) => void;
-    initialData?: T;
-    storageMode?: StorageMode; // 'asyncstorage' or 'filesystem'
-  }
+  instanceId?: string,
+  opts?: FormDraftOptions<T>,
 ) => {
-  const storageKey = `${STORAGE_PREFIX}${formId}`;
+  // Use instanceId for storage key if provided, otherwise generate one
+  const [currentInstanceId, setCurrentInstanceId] = useState<string>(
+    instanceId || generateInstanceId(),
+  );
+
+  const storageKey = `${STORAGE_PREFIX}${currentInstanceId}`;
   const maxEdits = opts?.maxEdits ?? MAX_EDITS;
   const storageMode = opts?.storageMode ?? "asyncstorage";
 
@@ -131,13 +85,20 @@ export const useFormDraft = <
       submitted: false,
       version: 1,
       formId,
-      instanceId: generateInstanceId(),
+      instanceId: currentInstanceId,
       startedAt: new Date().toISOString(),
     },
   });
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>("synced");
+  const [validationErrors, setValidationErrors] = useState<{
+    [path: string]: string[];
+  }>({});
+
   const saveTimer = useRef<number | null>(null);
+  const syncManager = useRef(new SyncManager<T>(opts?.onSync));
 
   // Load draft from storage
   useEffect(() => {
@@ -145,36 +106,49 @@ export const useFormDraft = <
 
     (async () => {
       try {
-        let raw: string | null = null;
+        // If instanceId was provided, try to load existing draft
+        if (instanceId) {
+          const stored = await loadDraft<T>(storageKey, storageMode, true);
 
-        if (storageMode === "filesystem") {
-          raw = await loadFromFileSystem(storageKey);
+          if (!mounted) return;
+
+          if (stored) {
+            setDraft(stored);
+          } else {
+            // Instance doesn't exist, create new one
+            const initialDraft: FormDraft<T> = {
+              data: (opts?.initialData || {}) as T,
+              meta: {
+                edits: [],
+                finalized: false,
+                submitted: false,
+                version: 1,
+                formId,
+                instanceId: currentInstanceId,
+                startedAt: new Date().toISOString(),
+              },
+            };
+            setDraft(initialDraft);
+          }
         } else {
-          raw = await AsyncStorage.getItem(storageKey);
-        }
-
-        if (!mounted) return;
-
-        if (raw) {
-          const stored = JSON.parse(raw);
-          setDraft(stored);
-        } else if (opts?.initialData) {
-          setDraft({
-            data: opts.initialData,
+          // No instanceId provided, create new draft
+          const initialDraft: FormDraft<T> = {
+            data: (opts?.initialData || {}) as T,
             meta: {
               edits: [],
               finalized: false,
               submitted: false,
               version: 1,
               formId,
-              instanceId: generateInstanceId(),
+              instanceId: currentInstanceId,
               startedAt: new Date().toISOString(),
             },
-          });
+          };
+          setDraft(initialDraft);
         }
-      } catch (e) {
-        console.warn("Failed loading draft from storage", e);
-        opts?.onSaveError?.(e as Error);
+      } catch (error) {
+        console.warn("Failed loading draft from storage", error);
+        opts?.onSaveError?.(error as Error);
       } finally {
         if (mounted) setIsLoading(false);
       }
@@ -183,7 +157,7 @@ export const useFormDraft = <
     return () => {
       mounted = false;
     };
-  }, [storageKey, formId, storageMode]);
+  }, [storageKey, formId, instanceId, storageMode, currentInstanceId]);
 
   // Cleanup timer on unmount
   useEffect(() => {
@@ -199,21 +173,16 @@ export const useFormDraft = <
     async (value: FormDraft<T>) => {
       try {
         setIsSaving(true);
-        const jsonString = JSON.stringify(value);
-
-        if (storageMode === "filesystem") {
-          await saveToFileSystem(storageKey, jsonString);
-        } else {
-          await AsyncStorage.setItem(storageKey, jsonString);
-        }
-      } catch (e) {
-        console.error("Persist error:", e);
-        opts?.onSaveError?.(e as Error);
+        await saveDraft(storageKey, value, storageMode, true);
+      } catch (error) {
+        console.error("Persist error:", error);
+        opts?.onSaveError?.(error as Error);
+        throw error;
       } finally {
         setIsSaving(false);
       }
     },
-    [storageKey, storageMode, opts]
+    [storageKey, storageMode, opts],
   );
 
   // Debounced save
@@ -226,7 +195,26 @@ export const useFormDraft = <
         persist(value);
       }, DEBOUNCE_MS);
     },
-    [persist]
+    [persist],
+  );
+
+  // Validate field
+  const validateField = useCallback(
+    (path: string, value: any): string[] => {
+      if (!opts?.validation?.[path]) return [];
+
+      const rules = opts.validation[path];
+      const errors: string[] = [];
+
+      for (const rule of rules) {
+        if (!rule.validate(value)) {
+          errors.push(rule.message);
+        }
+      }
+
+      return errors;
+    },
+    [opts?.validation],
   );
 
   // Update field by path
@@ -247,6 +235,18 @@ export const useFormDraft = <
 
         if (JSON.stringify(oldValue) === JSON.stringify(newValue)) {
           return prev;
+        }
+
+        // Validate field
+        const fieldErrors = validateField(path, newValue);
+        if (fieldErrors.length > 0) {
+          setValidationErrors((prev) => ({ ...prev, [path]: fieldErrors }));
+        } else {
+          setValidationErrors((prev) => {
+            const next = { ...prev };
+            delete next[path];
+            return next;
+          });
         }
 
         const nextData = setNestedValue(prev.data, path, newValue);
@@ -271,7 +271,7 @@ export const useFormDraft = <
         return nextDraft;
       });
     },
-    [isLoading, scheduleSave, maxEdits]
+    [isLoading, scheduleSave, maxEdits, validateField],
   );
 
   // Batch update multiple fields
@@ -285,17 +285,38 @@ export const useFormDraft = <
         let nextData = prev.data;
         const edits: EditEntry[] = [];
         const timestamp = new Date().toISOString();
+        const newValidationErrors: { [path: string]: string[] } = {};
 
         Object.entries(updates).forEach(([path, newValue]) => {
           const oldValue = getNestedValue(nextData, path);
 
           if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+            // Validate field
+            const fieldErrors = validateField(path, newValue);
+            if (fieldErrors.length > 0) {
+              newValidationErrors[path] = fieldErrors;
+            }
+
             nextData = setNestedValue(nextData, path, newValue);
             edits.push({ path, oldValue, newValue, at: timestamp });
           }
         });
 
         if (edits.length === 0) return prev;
+
+        // Update validation errors
+        setValidationErrors((prev) => {
+          const next = { ...prev };
+          // Clear errors for updated fields that are now valid
+          Object.keys(updates).forEach((path) => {
+            if (!newValidationErrors[path]) {
+              delete next[path];
+            } else {
+              next[path] = newValidationErrors[path];
+            }
+          });
+          return next;
+        });
 
         const allEdits = [...(prev.meta?.edits || []), ...edits];
         const nextMeta: FormMeta = {
@@ -310,7 +331,7 @@ export const useFormDraft = <
         return nextDraft;
       });
     },
-    [isLoading, scheduleSave, maxEdits]
+    [isLoading, scheduleSave, maxEdits, validateField],
   );
 
   // Get field value by path
@@ -318,39 +339,46 @@ export const useFormDraft = <
     (path: string) => {
       return getNestedValue(draft.data, path);
     },
-    [draft.data]
+    [draft.data],
   );
 
   // Reload from storage
-  const loadDraft = useCallback(async () => {
+  const reloadDraft = useCallback(async () => {
     try {
-      let raw: string | null = null;
+      setIsLoading(true);
+      const stored = await loadDraft<T>(storageKey, storageMode, true);
 
-      if (storageMode === "filesystem") {
-        raw = await loadFromFileSystem(storageKey);
-      } else {
-        raw = await AsyncStorage.getItem(storageKey);
-      }
+      if (stored) {
+        setDraft(stored);
 
-      if (raw) {
-        setDraft(JSON.parse(raw));
+        // Revalidate all fields
+        if (opts?.validation) {
+          const validation = validateFormData(stored.data, opts.validation);
+          setValidationErrors(validation.errors);
+        }
       }
-    } catch (e) {
-      console.warn("loadDraft error:", e);
-      opts?.onSaveError?.(e as Error);
+    } catch (error) {
+      console.warn("reloadDraft error:", error);
+      opts?.onSaveError?.(error as Error);
+    } finally {
+      setIsLoading(false);
     }
   }, [storageKey, storageMode, opts]);
 
   // Clear draft
   const clearDraft = useCallback(async () => {
     try {
+      const file = new File(Paths.document, `${storageKey}.json`);
+
       if (storageMode === "filesystem") {
-        await deleteFromFileSystem(storageKey);
+        if (file.exists) {
+          file.delete();
+        }
       } else {
         await AsyncStorage.removeItem(storageKey);
       }
 
-      setDraft({
+      const initialDraft: FormDraft<T> = {
         data: (opts?.initialData || {}) as T,
         meta: {
           edits: [],
@@ -361,15 +389,27 @@ export const useFormDraft = <
           instanceId: generateInstanceId(),
           startedAt: new Date().toISOString(),
         },
-      });
-    } catch (e) {
-      console.warn("clearDraft error:", e);
-      opts?.onSaveError?.(e as Error);
+      };
+
+      setDraft(initialDraft);
+      setValidationErrors({});
+    } catch (error) {
+      console.warn("clearDraft error:", error);
+      opts?.onSaveError?.(error as Error);
     }
   }, [storageKey, storageMode, formId, opts]);
 
   // Finalize form (ready for submission)
   const finalizeDraft = useCallback(async () => {
+    // Validate entire form
+    if (opts?.validation) {
+      const validation = validateFormData(draft.data, opts.validation);
+      if (!validation.isValid) {
+        setValidationErrors(validation.errors);
+        throw new Error("Form validation failed");
+      }
+    }
+
     if (saveTimer.current) {
       clearTimeout(saveTimer.current);
       saveTimer.current = null;
@@ -386,8 +426,16 @@ export const useFormDraft = <
 
     setDraft(next);
     await persist(next);
+
+    // Add to sync queue
+    syncManager.current.addToQueue({
+      action: "finalize",
+      data: next,
+      timestamp: new Date().toISOString(),
+    });
+
     return next;
-  }, [draft, persist]);
+  }, [draft, persist, opts?.validation]);
 
   // Mark as submitted (ODK-style)
   const markSubmitted = useCallback(async () => {
@@ -398,17 +446,26 @@ export const useFormDraft = <
         submitted: true,
         finalized: true,
         savedAt: new Date().toISOString(),
+        lastSyncedAt: new Date().toISOString(),
       },
     };
 
     setDraft(next);
     await persist(next);
+
+    // Add to sync queue
+    syncManager.current.addToQueue({
+      action: "submit",
+      data: next,
+      timestamp: new Date().toISOString(),
+    });
+
     return next;
   }, [draft, persist]);
 
   // Reset to initial data
   const resetDraft = useCallback(async () => {
-    const initial = {
+    const initial: FormDraft<T> = {
       data: (opts?.initialData || {}) as T,
       meta: {
         edits: [],
@@ -420,7 +477,9 @@ export const useFormDraft = <
         startedAt: new Date().toISOString(),
       },
     };
+
     setDraft(initial);
+    setValidationErrors({});
     await persist(initial);
   }, [opts?.initialData, formId, persist]);
 
@@ -450,23 +509,48 @@ export const useFormDraft = <
     await persist(draft);
   }, [draft, persist]);
 
+  // Validate entire form
+  const validate = useCallback(() => {
+    if (!opts?.validation) return { isValid: true, errors: {} };
+
+    const validation = validateFormData(draft.data, opts.validation);
+    setValidationErrors(validation.errors);
+    return validation;
+  }, [draft.data, opts?.validation]);
+
+  // Sync with server
+  const sync = useCallback(
+    async (syncFunction: (draft: FormDraft<T>) => Promise<void>) => {
+      await syncManager.current.sync(async (item) => {
+        await syncFunction(item.data);
+      });
+    },
+    [],
+  );
+
   return {
     draftData: draft.data,
     draftMeta: draft.meta,
     updateField,
     updateFields,
     getField,
-    loadDraft,
+    loadDraft: reloadDraft,
     clearDraft,
     finalizeDraft,
     markSubmitted,
     resetDraft,
     exportInstance,
     saveNow,
+    validate,
+    sync,
     isFinalized: !!draft.meta?.finalized,
     isSubmitted: !!draft.meta?.submitted,
     isLoading,
     isSaving,
+    syncStatus: syncManager.current.getStatus(),
+    syncQueueLength: syncManager.current.getQueueLength(),
+    validationErrors,
+    isValid: Object.keys(validationErrors).length === 0,
     instanceId: draft.meta.instanceId,
   } as const;
 };

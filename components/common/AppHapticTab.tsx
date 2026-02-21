@@ -21,9 +21,7 @@ const HapticTab: React.FC<HapticTabProps> = ({
   style,
   ...rest
 }) => {
-  const handlePress: NonNullable<HapticTabProps["onPress"]> = (
-    ...args: any[]
-  ) => {
+  const handlePress = (event: any) => {
     try {
       // simple vibration-based haptic feedback without extra deps
       Vibration.vibrate(HAPTIC_DURATION);
@@ -31,7 +29,7 @@ const HapticTab: React.FC<HapticTabProps> = ({
       // ignore if vibration isn't available
     }
 
-    if (onPress) onPress(...(args as any));
+    if (onPress) onPress(event as any);
   };
 
   return (

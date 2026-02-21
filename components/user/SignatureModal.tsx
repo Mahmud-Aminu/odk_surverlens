@@ -1,11 +1,7 @@
 import useTheme from "@/theme";
 import { Feather } from "@expo/vector-icons";
-import { clsx } from "clsx";
-import { Modal, Pressable, TouchableOpacity, View } from "react-native";
-import {
-  heightPercentageToDP as hp,
-  widthPercentageToDP as wp,
-} from "react-native-responsive-screen";
+import { Modal, TouchableOpacity, View } from "react-native";
+import AppButton from "../common/AppButton";
 import AppCard from "../common/AppCard";
 import AppText from "../common/AppText";
 
@@ -16,78 +12,70 @@ type SignatureModalProps = {
     sign: string;
     hospital: { hname: string; haddrs: string };
   };
+  setFormData?: (data: any) => void;
 };
 
-const SignatureModal = ({ onClose, formData }: SignatureModalProps) => {
-  const handleSubmit = () => {};
+const SignatureModal = ({ onClose, formData, setFormData }: SignatureModalProps) => {
+
+  const handleSubmit = () => {
+    // In a real app, this would capture the drawing.
+    // For now, we simulate signing by setting a dummy string if not present
+    if (setFormData) {
+      setFormData({ ...formData, sign: "signed_content_placeholder" });
+    }
+    onClose();
+  };
 
   const { theme, mode } = useTheme();
-  const bgColor = mode === "light" ? "bg-gray-100" : "bg-gray-900";
-  const modalBase = "shadow-sm rounded-3xl w-full rounded-3xl";
-  const merdgedStyle = clsx(modalBase);
 
   return (
     <Modal
-      style={{ backgroundColor: theme.colors.background }}
-      onRequestClose={onClose}
       transparent
+      animationType="fade"
+      visible={true}
+      onRequestClose={onClose}
     >
-      <Pressable
-        onPress={onClose}
-        className={`flex items-center h-full absolute z-50 flex-1 justify-center p-4 w-full`}
-      >
-        <AppCard className={merdgedStyle}>
-          {/* header */}
-          <View
-            className={`sticky top-0 border-b border-[#0a7ea4] px-6 py-4 flex flex-row items-center justify-between`}
-          >
-            <AppText type="subheading" className="">
-              Signature
-            </AppText>
-            <Pressable
-              style={{ backgroundColor: theme.colors.background }}
+      <View className="flex-1 justify-center items-center bg-black/50 px-6">
+        <AppCard className="w-full max-w-md rounded-2xl p-0" variant="elevated">
+
+          {/* Header */}
+          <View className="flex-row items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
+            <AppText className="font-bold text-lg">Signature</AppText>
+            <TouchableOpacity onPress={onClose}>
+              <Feather name="x" size={24} color={mode === "dark" ? "#e5e7eb" : "#374151"} />
+            </TouchableOpacity>
+          </View>
+
+          {/* Canvas Area (Placeholder) */}
+          <View className="p-6 items-center justify-center bg-gray-50 dark:bg-gray-900/50">
+            <View className="w-full h-48 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 flex items-center justify-center">
+              <Feather name="edit-3" size={32} color={mode === "dark" ? "#4b5563" : "#9ca3af"} />
+              <AppText className="text-gray-400 mt-2 text-sm">Draw signature here</AppText>
+            </View>
+          </View>
+
+          {/* Actions */}
+          <View className="flex-row p-4 gap-3 border-t border-gray-100 dark:border-gray-800">
+            <AppButton
+              variant="outline"
               onPress={onClose}
-              className={`${bgColor} w-8 h-8 rounded-full flex items-center justify-center shadow-sm`}
+              className="flex-1"
             >
-              <AppText>
-                <Feather name="x" size={hp(2.5)} color={"#0a7ea4"} />
-              </AppText>
-            </Pressable>
+              Cancel
+            </AppButton>
+            <AppButton
+              variant="primary"
+              onPress={handleSubmit}
+              className="flex-1"
+            >
+              Save Signature
+            </AppButton>
           </View>
-          <View className="pb-5 px-5 space-y-5">
-            {/* signature input */}
-            <View className="p-6 items-center overflow-y-auto max-h-[calc(90vh-80px)]">
-              <View
-                style={{ height: hp(20), width: wp(60) }}
-                className="h-12 w-12 border border-[#0a7ea4]"
-              />
-            </View>
-            {/* buttons */}
-            <View className="flex flex-row items-center justify-between w-full ">
-              <TouchableOpacity
-                className={`py-3 w-2/6 rounded-xl bg-[#0a7ea4]`}
-                onPress={onClose}
-              >
-                <AppText className="text-white text-center font-semibold">
-                  Cancel
-                </AppText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                className={`py-3 w-2/6 rounded-xl flex-row justify-center ${
-                  formData.sign ? "bg-[#0a7ea4]" : "border border-[#0a7ea4]"
-                }`}
-                disabled={!formData.sign}
-                onPress={handleSubmit}
-              >
-                <AppText className="text-white text-center font-semibold">
-                  Submit
-                </AppText>
-              </TouchableOpacity>
-            </View>
-          </View>
+
         </AppCard>
-      </Pressable>
+      </View>
     </Modal>
   );
 };
+
 export default SignatureModal;

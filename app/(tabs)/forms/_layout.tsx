@@ -1,15 +1,14 @@
 // app/_layout.tsx
-import React from "react";
-import { AFPProvider } from "@/temp/context/AFPContext";
 import { Slot } from "expo-router";
+import React from "react";
 import { View } from "react-native";
 
 export default function Layout() {
   return (
-    <AFPProvider>
+    <View>
       <View className="flex-1">
         <Slot />
       </View>
-    </AFPProvider>
+    </View>
   );
 }

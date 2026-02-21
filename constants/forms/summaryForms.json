@@ -1,0 +1,271 @@
+{
+  "AFP": [
+    {
+      "form_id": "AFP-F001",
+      "title": "Immediate AFP Case Notification Form",
+      "version": "2.1",
+      "last_updated": "2025-10-15",
+      "metadata": {
+        "category": "AFP Surveillance",
+        "language": "en"
+      },
+      "survey": [
+        {
+          "type": "begin_group",
+          "name": "location_and_date",
+          "label": "Location & Date"
+        },
+        {
+          "type": "select_one",
+          "name": "state",
+          "label": "State",
+          "choices": [
+            { "name": "kt", "label": "Katsina" },
+            { "name": "kn", "label": "Kano" },
+            { "name": "kd", "label": "Kaduna" }
+          ],
+          "required": true
+        },
+        {
+          "type": "select_one",
+          "name": "lga",
+          "label": "Local Government Area (LGA)",
+          "choices": [
+            { "name": "batagarawa", "label": "Batagarawa" },
+            { "name": "funtua", "label": "Funtua" },
+            { "name": "dutsinma", "label": "Dutsinma" }
+          ],
+          "required": true
+        },
+        {
+          "type": "text",
+          "name": "ward",
+          "label": "Ward Name",
+          "required": true
+        },
+        {
+          "type": "date",
+          "name": "report_date",
+          "label": "Date of Report",
+          "required": true
+        },
+        {
+          "type": "text",
+          "name": "reporting_officer",
+          "label": "Reporting Officer Name"
+        },
+        {
+          "type": "text",
+          "name": "contact_number",
+          "label": "Phone Number",
+          "appearance": "numbers"
+        },
+        { "type": "end_group" },
+
+        {
+          "type": "begin_group",
+          "name": "case_details",
+          "label": "Case Details"
+        },
+        {
+          "type": "text",
+          "name": "patient_name",
+          "label": "Name of Patient",
+          "required": true
+        },
+        {
+          "type": "integer",
+          "name": "patient_age",
+          "label": "Age (in years)"
+        },
+        {
+          "type": "date",
+          "name": "onset_date",
+          "label": "Date of Onset of Weakness",
+          "required": true
+        },
+        {
+          "type": "text",
+          "name": "address",
+          "label": "Address of Patient"
+        },
+        {
+          "type": "geopoint",
+          "name": "gps_location",
+          "label": "GPS Coordinates"
+        },
+        {
+          "type": "select_one",
+          "name": "vaccination_status",
+          "label": "OPV Vaccination Status",
+          "choices": [
+            { "name": "0_dose", "label": "0 doses" },
+            { "name": "1_2_doses", "label": "1–2 doses" },
+            { "name": "3plus_doses", "label": "3 or more doses" },
+            { "name": "unknown", "label": "Unknown" }
+          ]
+        },
+        {
+          "type": "select_one",
+          "name": "specimen_collected",
+          "label": "Stool Specimen Collected?",
+          "choices": [
+            { "name": "yes", "label": "Yes" },
+            { "name": "no", "label": "No" }
+          ]
+        },
+        { "type": "end_group" }
+      ],
+      "settings": {
+        "form_title": "Immediate AFP Case Notification Form",
+        "form_id": "AFP-F001",
+        "version": "2.1"
+      }
+    },
+
+    {
+      "form_id": "AFP-F002",
+      "title": "AFP Case Investigation Form",
+      "version": "3.0",
+      "metadata": { "category": "AFP Surveillance", "language": "en" },
+      "survey": [
+        {
+          "type": "begin_group",
+          "name": "patient_information",
+          "label": "Patient Information"
+        },
+        {
+          "type": "text",
+          "name": "patient_name",
+          "label": "Patient Name"
+        },
+        {
+          "type": "integer",
+          "name": "patient_age",
+          "label": "Age (Years)"
+        },
+        {
+          "type": "select_one",
+          "name": "sex",
+          "label": "Sex",
+          "choices": [
+            { "name": "m", "label": "Male" },
+            { "name": "f", "label": "Female" }
+          ]
+        },
+        {
+          "type": "date",
+          "name": "date_of_onset",
+          "label": "Date of Onset of Weakness"
+        },
+        {
+          "type": "date",
+          "name": "date_of_investigation",
+          "label": "Date of Investigation"
+        },
+        {
+          "type": "select_one",
+          "name": "paralysis_progression",
+          "label": "Progression of Paralysis within 3 Days?",
+          "choices": [
+            { "name": "yes", "label": "Yes" },
+            { "name": "no", "label": "No" },
+            { "name": "unknown", "label": "Unknown" }
+          ]
+        },
+        {
+          "type": "select_one",
+          "name": "sudden_onset",
+          "label": "Sudden Onset of Paralysis?",
+          "choices": [
+            { "name": "yes", "label": "Yes" },
+            { "name": "no", "label": "No" }
+          ]
+        },
+        {
+          "type": "end_group"
+        }
+      ]
+    },
+
+    {
+      "form_id": "AFP-F003",
+      "title": "AFP Follow-up Investigation Form",
+      "version": "1.0",
+      "metadata": { "category": "AFP Surveillance", "language": "en" },
+      "survey": [
+        {
+          "type": "begin_group",
+          "name": "follow_up_information",
+          "label": "Follow-Up Investigation"
+        },
+        {
+          "type": "text",
+          "name": "case_id",
+          "label": "Case ID"
+        },
+        {
+          "type": "date",
+          "name": "follow_up_date",
+          "label": "Date of Follow-Up"
+        },
+        {
+          "type": "select_one",
+          "name": "residual_paralysis",
+          "label": "Residual Paralysis Present?",
+          "choices": [
+            { "name": "yes", "label": "Yes" },
+            { "name": "no", "label": "No" },
+            { "name": "unknown", "label": "Unknown" }
+          ]
+        },
+        {
+          "type": "note",
+          "name": "remarks",
+          "label": "Investigator Remarks"
+        },
+        { "type": "end_group" }
+      ]
+    },
+
+    {
+      "form_id": "AFP-F004",
+      "title": "AFP Final Classification Form",
+      "version": "1.0",
+      "metadata": { "category": "AFP Surveillance", "language": "en" },
+      "survey": [
+        {
+          "type": "begin_group",
+          "name": "final_classification",
+          "label": "Final Case Classification"
+        },
+        {
+          "type": "text",
+          "name": "case_id",
+          "label": "Case ID"
+        },
+        {
+          "type": "select_one",
+          "name": "classification_result",
+          "label": "Final Classification",
+          "choices": [
+            { "name": "polio", "label": "Confirmed Polio" },
+            { "name": "non_polio", "label": "Non-Polio AFP" },
+            { "name": "compatible", "label": "Compatible with Polio" }
+          ]
+        },
+        {
+          "type": "date",
+          "name": "classification_date",
+          "label": "Date of Classification"
+        },
+        {
+          "type": "note",
+          "name": "remarks",
+          "label": "Final Remarks"
+        },
+        { "type": "end_group" }
+      ]
+    }
+  ]
+}

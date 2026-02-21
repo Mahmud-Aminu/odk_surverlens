@@ -1,52 +1,119 @@
-import { AppCard, AppText } from "@/components";
+import { AppCard, AppContainer, AppText } from "@/components";
+import { FormHeader } from "@/components/home/Header";
+import { useForm } from "@/context/FormContext";
+import {
+  deleteFromFileSystem,
+  listDraftKeys,
+  loadDraft,
+} from "@/utils/storage";
+import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "expo-router";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
-  StyleSheet,
   TouchableOpacity,
   View,
 } from "react-native";
-import { heightPercentageToDP as hp } from "react-native-responsive-screen";
-import { DraftForm, STORAGE_KEYS, useForm } from "../../../context/FormContext";
 
-const EditSavedFormsScreen: React.FC<{ navigation: any }> = ({
-  navigation,
-}) => {
-  const [draftForms, setDraftFormsState] = useState<DraftForm[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+type DraftItem = {
+  key: string;
+  formId: string;
+  instanceId: string;
+  storageMode: "filesystem" | "asyncstorage";
+  savedAt?: string;
+  finalized?: boolean;
+  data?: any;
+};
 
-  const { handleOpenForm, handleDeleteDraft } = useForm();
-  useEffect(() => {
-    getDraftsForms();
-  }, []);
+const DraftsScreen: React.FC = () => {
+  const router = useRouter();
+  const { localForms, refreshLocalForms } = useForm();
 
-  const getDraftsForms = useCallback(async () => {
+  const [loading, setLoading] = useState(true);
+  const [drafts, setDrafts] = useState<DraftItem[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadAllDrafts = useCallback(async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const storedForms = await AsyncStorage.getItem(STORAGE_KEYS.DRAFT_FORMS);
-      if (storedForms) {
-        const parsedForms: DraftForm[] = JSON.parse(storedForms);
-        setDraftFormsState(parsedForms);
+      const fsKeys = await listDraftKeys("filesystem");
+      const asKeys = await listDraftKeys("asyncstorage");
+
+      const items: DraftItem[] = [];
+
+      for (const k of fsKeys) {
+        try {
+          const draft = await loadDraft(k, "filesystem");
+          const formId = draft?.meta?.formId || k.replace(/^odk_form_/, "");
+          const instanceId = draft?.meta?.instanceId || "";
+          items.push({
+            key: k,
+            formId,
+            instanceId,
+            storageMode: "filesystem",
+            savedAt: draft?.meta?.savedAt || draft?.meta?.startedAt,
+            finalized: !!draft?.meta?.finalized,
+            data: draft?.data,
+          });
+        } catch (e) {
+          console.warn("Failed to load filesystem draft", k, e);
+        }
       }
+
+      for (const k of asKeys) {
+        try {
+          const draft = await loadDraft(k, "asyncstorage");
+          const formId = draft?.meta?.formId || k.replace(/^odk_form_/, "");
+          const instanceId = draft?.meta?.instanceId || "";
+          if (items.find((it) => it.key === k)) continue;
+
+          items.push({
+            key: k,
+            formId,
+            instanceId,
+            storageMode: "asyncstorage",
+            savedAt: draft?.meta?.savedAt || draft?.meta?.startedAt,
+            finalized: !!draft?.meta?.finalized,
+            data: draft?.data,
+          });
+        } catch (e) {
+          console.warn("Failed to load asyncstorage draft", k, e);
+        }
+      }
+
+      const editable = items.filter((d) => !d.finalized);
+      setDrafts(editable);
+      console.log("Loaded drafts:", editable);
     } catch (error) {
-      console.error("Error fetching downloaded forms:", error);
+      console.error("Failed to load drafts", error);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const onEditDraft = (draft: any) => {
-    handleOpenForm(draft.form, draft, true);
-    navigation.navigate("FormEntry");
+  useEffect(() => {
+    loadAllDrafts();
+    refreshLocalForms();
+  }, [loadAllDrafts, refreshLocalForms]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refreshLocalForms();
+    await loadAllDrafts();
+    setRefreshing(false);
+  }, [loadAllDrafts, refreshLocalForms]);
+
+  const handleEdit = (item: DraftItem) => {
+    router.push(`/forms/${item.formId}?instanceId=${item.instanceId}`);
   };
 
-  const onDeleteDraft = async (draftId: string, formName: string) => {
+  const handleDelete = async (item: DraftItem) => {
     Alert.alert(
       "Delete Draft",
-      `Are you sure you want to delete "${formName}"?`,
+      "Are you sure you want to delete this draft? This action cannot be undone.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -54,87 +121,93 @@ const EditSavedFormsScreen: React.FC<{ navigation: any }> = ({
           style: "destructive",
           onPress: async () => {
             try {
-              await handleDeleteDraft(draftId);
-              Alert.alert("Success", "Draft deleted");
-            } catch (error: any) {
-              Alert.alert("Error", error.message);
+              if (item.storageMode === "filesystem") {
+                await deleteFromFileSystem(item.key);
+              } else {
+                await AsyncStorage.removeItem(item.key);
+              }
+              await loadAllDrafts();
+            } catch (e) {
+              console.error("Failed to delete draft", e);
+              Alert.alert("Error", "Failed to delete draft");
             }
           },
         },
-      ]
+      ],
     );
   };
 
-  if (loading) {
+  const renderItem = ({ item }: { item: DraftItem }) => {
+    const form = localForms.find((f) => f.id === item.formId);
+    const title = form?.instanceName || item.formId;
+
     return (
-      <View className="flex items-center justify-center">
-        <ActivityIndicator size="large" color="#2563eb" />
-      </View>
+      <AppCard className="mb-3 p-4" variant="elevated">
+        <View className="flex-row justify-between items-center">
+          <View className="flex-row items-center flex-1 mr-3">
+            <View className="flex-1">
+              <AppText className="font-semibold text-base">{title}</AppText>
+              <AppText className="text-xs text-gray-500 mt-0.5">
+                {item.savedAt
+                  ? new Date(item.savedAt).toLocaleString()
+                  : "Saved"}
+              </AppText>
+            </View>
+          </View>
+
+          <View className="flex-row gap-2">
+            <TouchableOpacity onPress={() => handleEdit(item)}>
+              <View className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 items-center justify-center mr-3">
+                <Feather name="edit-3" size={18} color="#3b82f6" />
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => handleDelete(item)}
+              className="px-3 py-2 bg-red-500 rounded-lg active:bg-red-600"
+            >
+              <Feather name="trash-2" size={16} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </AppCard>
     );
-  }
+  };
 
   return (
-    <View className="flex flex-col gap-3 justify-center">
-      {draftForms.length === 0 ? (
-        <AppCard className="p-8 flex flex-col items-center justify-center">
-          <AppText>No draft forms available.</AppText>
-        </AppCard>
-      ) : (
-        <View className="flex flex-col gap-3 justify-center px-4 w-full">
-          <AppText type="body" className="font-bold tracking-wide mt-6">
-            Draft Forms ({draftForms.length})
-          </AppText>
-          <FlatList
-            data={draftForms}
-            keyExtractor={(item) => item.draftId}
-            renderItem={({ item }) => (
-              <AppCard className="shadow-sm rounded-md px-2 py-2">
-                <TouchableOpacity
-                  className="p-4 grid grid-cols-1 gap-2"
-                  onPress={() => onEditDraft(item)}
-                >
-                  <AppText
-                    type="subheading"
-                    className="font-bold tracking-wide"
-                  >
-                    {item.form.id} - Draft
-                  </AppText>
-                  <AppText type="body" style={{ fontSize: hp(1.4) }}>
-                    {item.form.title}
-                  </AppText>
-                  <AppText type="body" style={{ fontSize: hp(1.4) }}>
-                    Saved: {item.savedDate}
-                  </AppText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.deleteButton}
-                  onPress={() => onDeleteDraft(item.draftId, item.form.id)}
-                >
-                  <AppText style={styles.deleteButtonText}>Delete</AppText>
-                </TouchableOpacity>
-              </AppCard>
-            )}
-          />
+    <AppContainer className="flex-1">
+      <FormHeader
+        currentRoute="Drafts"
+        goBack={() => router.replace("/(tabs)")}
+      />
+
+      {loading ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#3b82f6" />
         </View>
+      ) : drafts.length === 0 ? (
+        <View className="flex-1 items-center justify-center px-6">
+          <View className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center mb-4">
+            <Feather name="file-text" size={36} color="#9ca3af" />
+          </View>
+          <AppText className="text-gray-400 text-base text-center">
+            No editable drafts found.
+          </AppText>
+          <AppText className="text-gray-400 text-xs text-center mt-1">
+            Start filling a form and save it as a draft.
+          </AppText>
+        </View>
+      ) : (
+        <FlatList
+          data={drafts}
+          keyExtractor={(i) => i.key}
+          renderItem={renderItem}
+          onRefresh={onRefresh}
+          refreshing={refreshing}
+          contentContainerStyle={{ padding: 16 }}
+        />
       )}
-    </View>
+    </AppContainer>
   );
 };
 
-export default EditSavedFormsScreen;
-
-const styles = StyleSheet.create({
-  deleteButton: {
-    backgroundColor: "#ef4444",
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    marginTop: 12,
-    alignSelf: "flex-start",
-  },
-  deleteButtonText: {
-    color: "white",
-    fontWeight: "600",
-    fontSize: 14,
-  },
-});
+export default DraftsScreen;

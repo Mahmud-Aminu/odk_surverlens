@@ -1,42 +1,80 @@
-import useTheme from "@/theme";
+import { useTheme } from "@/theme/ThemeContext";
 import { clsx } from "clsx";
 import React from "react";
+import { TextInput, TextInputProps, View } from "react-native";
+import AppText from "./AppText";
 
-type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
-type TextAreaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement>;
-type Props = (InputProps | TextAreaProps) & { multiline?: boolean };
+interface Props extends TextInputProps {
+  label?: string;
+  error?: string;
+  className?: string;
+  containerClassName?: string;
+  multiline?: boolean;
+  leftIcon?: React.ReactNode;
+  rightIcon?: React.ReactNode;
+}
 
-export default function AppTextInput({ multiline, className, ...rest }: Props) {
+export default function AppTextInput({
+  label,
+  error,
+  multiline,
+  className,
+  containerClassName,
+  style,
+  leftIcon,
+  rightIcon,
+  ...rest
+}: Props) {
   const { mode } = useTheme();
 
-  //   const baseStyle: React.CSSProperties = {
-  //     backgroundColor: theme.colors.cardBg,
-  //     borderColor: theme.colors.primary,
-  //     color: theme.colors.text,
-  //     fontSize: 14,
-  //     borderRadius: 8,
-  //     ...style,
-  //   };
-  const modeColors = mode === "dark" ? "text-gray-400" : "text-gray-600";
+  // Theme-based colors
+  const bgColor = mode === "dark" ? "bg-gray-800" : "bg-white";
+  const borderColor = error
+    ? "border-red-500"
+    : mode === "dark" ? "border-gray-700" : "border-gray-200";
+  const textColor = mode === "dark" ? "text-white" : "text-gray-900";
+  const placeholderColor = mode === "dark" ? "#9ca3af" : "#9ca3af";
 
-  const base =
-    "w-full pl-12 pr-12 py-3 text-gray-500 rounded-xl border border-[#0a7ea4] focus:border-blue-500 focus:outline-none transition-colors";
+  // Container style (Input wrapper)
+  const inputContainerBase = "flex-row items-center w-full rounded-xl border px-3";
+  const inputContainerParams = multiline ? "py-3 h-24 items-start" : "h-12";
 
-  const mergedClassname = clsx(base, modeColors, className);
+  const inputContainerClass = clsx(
+    inputContainerBase,
+    inputContainerParams,
+    bgColor,
+    borderColor,
+    className
+  );
 
-  if (multiline) {
-    // Only pass textarea props to textarea
-    const { ...textareaRest } = rest as TextAreaProps;
-    return (
-      <textarea
-        style={{ height: 80 }}
-        className={mergedClassname}
-        {...textareaRest}
-      />
-    );
-  }
+  return (
+    <View className={clsx("w-full mb-4", containerClassName)}>
+      {label && (
+        <AppText className="mb-1.5 font-medium text-gray-700 dark:text-gray-300 ml-1">
+          {label}
+        </AppText>
+      )}
 
-  // Only pass input props to input
-  const { ...inputRest } = rest as InputProps;
-  return <input className={mergedClassname} {...inputRest} />;
+      <View className={inputContainerClass}>
+        {leftIcon && <View className="mr-2">{leftIcon}</View>}
+
+        <TextInput
+          style={[{ textAlignVertical: multiline ? "top" : "center" }, style]}
+          className={clsx("flex-1 text-base", textColor)}
+          multiline={multiline}
+          numberOfLines={multiline ? 4 : 1}
+          placeholderTextColor={placeholderColor}
+          {...rest}
+        />
+
+        {rightIcon && <View className="ml-2">{rightIcon}</View>}
+      </View>
+
+      {error && (
+        <AppText className="mt-1 text-sm text-red-500 ml-1">
+          {error}
+        </AppText>
+      )}
+    </View>
+  );
 }

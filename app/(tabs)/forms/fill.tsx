@@ -1,109 +1,131 @@
 import { AppCard, AppContainer, AppText } from "@/components";
-import { DynamicHeader } from "@/components/home/Header";
-import { STORAGE_KEYS, useForm } from "@/context/FormContext";
-import { FormSchema } from "@/odk/type/FormType";
+import { EmptyFormsState } from "@/components/form/fill/EmptyComponent";
+import { FormHeader } from "@/components/home/Header";
+import { useForm } from "@/context/FormContext";
+import { odkStorage } from "@/utils/StorageManager";
 import { Feather } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "expo-router";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  RefreshControl,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
-import { heightPercentageToDP as hp } from "react-native-responsive-screen";
 
-const FillBlankFormsScreen = () => {
-  const [downloadedForms, setDownloadedFormsState] = useState<FormSchema[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const route = useRouter();
-
-  const { handleOpenForm } = useForm();
+const FillScreen = () => {
+  const { localForms, refreshLocalForms, loadingLocalForms } = useForm();
+  const [loadingLocal, setLoadingLocal] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
-    getDownloadedForms();
-  }, []);
+    let mounted = true;
 
-  const getDownloadedForms = useCallback(async () => {
-    try {
-      setLoading(true);
-      const storedForms = await AsyncStorage.getItem(
-        STORAGE_KEYS.DOWNLOADED_FORMS
-      );
-      if (storedForms) {
-        const parsedForms: FormSchema[] = JSON.parse(storedForms);
-        setDownloadedFormsState(parsedForms);
+    // Debug helper to check storage stats
+    (async () => {
+      try {
+        const stats = await odkStorage.getStorageStats();
+        console.log("Storage stats:", stats);
+      } catch (err) {
+        console.warn("Failed to read storage stats:", err);
       }
-    } catch (error) {
-      console.error("Error fetching downloaded forms:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    })();
 
-  const onOpenForm = (form: any) => {
-    handleOpenForm(form);
-    router.push({
-      pathname: `/forms/${form.id}` as never,
-      params: { form: JSON.stringify(form) },
-    });
-  };
+    const load = async () => {
+      try {
+        if (mounted) setLoadingLocal(true);
+        // Refresh local forms from storage
+        await refreshLocalForms();
+      } catch (e) {
+        console.warn("Failed to refresh local forms:", e);
+      } finally {
+        if (mounted) setLoadingLocal(false);
+      }
+    };
 
-  if (loading) {
-    return (
-      <View className="flex items-center justify-center">
-        <ActivityIndicator size="large" color="#2563eb" />
-      </View>
-    );
-  }
+    load();
+
+    return () => {
+      mounted = false;
+    };
+  }, [refreshLocalForms]);
 
   return (
-    <AppContainer className="flex-1 w-full">
-      <DynamicHeader
-        currentRoute={"Start a new form"}
-        goBack={() => route.replace("/(tabs)")}
-        onInfoPress={() => route.push(`/${"help"}` as never)}
-        onSettingsPress={() => route.push("/settings")}
+    <AppContainer className="flex-1">
+      <FormHeader
+        currentRoute="Local Forms"
+        goBack={() => router.replace("/(tabs)")}
       />
 
-      {downloadedForms.length === 0 ? (
-        <AppCard className="p-8 flex flex-col items-center justify-center">
-          <AppText>No forms available. Please download forms first.</AppText>
-        </AppCard>
-      ) : (
-        <View className="flex flex-col gap-3 justify-center px-4 w-full">
-          <AppText type="body" className="font-bold tracking-wide mt-6">
-            Downloaded Forms ({downloadedForms.length})
-          </AppText>
-          <FlatList
-            data={downloadedForms}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <AppCard className="flex flex-row gap-3 itemms-center backdrop:shadow-sm rounded-md p-4 mb-2">
-                <View className="items-center my-auto">
-                  <AppText>
-                    <Feather name="file" size={hp(3)} />
-                  </AppText>
-                </View>
-                <TouchableOpacity
-                  className="grid grid-cols-1 gap-1"
-                  onPress={() => onOpenForm(item)}
-                >
-                  <AppText type="body" className="font-bold tracking-wide">
-                    {item.title}
-                  </AppText>
-                  <AppText type="link">ID: {item.id}</AppText>
-                  <AppText type="link">
-                    Version {item.version} • {item.lastUpdated}
-                  </AppText>
-                </TouchableOpacity>
-              </AppCard>
-            )}
-          />
-        </View>
-      )}
+      <View className="flex-1 px-4 pt-2">
+        {loadingLocal && !localForms.length ? (
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color="#2563eb" />
+            <AppText className="mt-4 text-gray-600">Loading local forms...</AppText>
+          </View>
+        ) : (
+          <>
+            <View className="mb-4">
+              <AppText type="body" className="font-bold tracking-wide">
+                Ready to Fill
+              </AppText>
+              <AppText className="text-xs text-gray-500">
+                {localForms.length} form{localForms.length !== 1 ? "s" : ""} available on device
+              </AppText>
+            </View>
+
+            <FlatList
+              data={localForms}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <AppCard className="mb-3 p-0 overflow-hidden" variant="elevated">
+                  <TouchableOpacity
+                    onPress={() => router.push(`/forms/${item.id}`)}
+                    className="p-4 flex-row justify-between items-center active:bg-gray-50 dark:active:bg-gray-800"
+                  >
+                    <View className="flex-1 mr-4">
+                      <AppText type="body" className="font-bold text-base mb-1">
+                        {item.title}
+                      </AppText>
+                      <AppText className="text-xs text-gray-500">
+                        v{item.version} • ID: {item.id}
+                      </AppText>
+                    </View>
+
+                    <View className="flex-row items-center gap-2">
+                      <View className="bg-blue-50 dark:bg-blue-900/20 px-3 py-1.5 rounded-full flex-row items-center gap-1.5">
+                        <Feather name="edit-3" size={14} color="#2563eb" />
+                        <AppText className="text-blue-600 dark:text-blue-400 text-xs font-semibold">
+                          Fill
+                        </AppText>
+                      </View>
+                      <Feather name="chevron-right" size={20} color="#9ca3af" />
+                    </View>
+                  </TouchableOpacity>
+                </AppCard>
+              )}
+              ListEmptyComponent={
+                <EmptyFormsState
+                  onRefresh={refreshLocalForms}
+                  isRefreshing={loadingLocalForms}
+                />
+              }
+              contentContainerStyle={{ paddingBottom: 100 }}
+              refreshControl={
+                <RefreshControl
+                  refreshing={loadingLocalForms}
+                  onRefresh={refreshLocalForms}
+                  colors={["#2563eb"]}
+                  tintColor="#2563eb"
+                />
+              }
+            />
+          </>
+        )}
+      </View>
     </AppContainer>
   );
 };
-export default FillBlankFormsScreen;
+
+export default FillScreen;

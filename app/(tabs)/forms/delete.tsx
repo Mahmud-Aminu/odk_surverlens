@@ -1,132 +1,253 @@
-import { AppButton, AppContainer, AppText } from "@/components";
-import { DynamicHeader } from "@/components/home/Header";
+import { AppCard, AppContainer, AppText } from "@/components";
+import { FormHeader } from "@/components/home/Header";
+import { useForm } from "@/context/FormContext";
+import { odkStorage } from "@/utils/StorageManager";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
-import { Pressable, View } from "react-native";
-import { heightPercentageToDP as hp } from "react-native-responsive-screen";
-import { useForm } from "../../../context/FormContext";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-const DeleteFormScreen = () => {
-  const [currentRoute, setCurrentRoute] = useState<string>("blank");
+type Tab = "blank" | "finalized";
+
+const DeleteFormScreen: React.FC = () => {
+  const [tab, setTab] = useState<Tab>("blank");
   const route = useRouter();
-  const {
-    finalizedForms,
-    downloadedForms,
-    setFinalizedForms,
-    setDownloadedForms,
-  } = useForm();
-  const mockData = [
-    { id: 1, title: "Imeddiate AFP case notification form" },
-    { id: 5, title: "Imeddiate AFP case notification form" },
-    { id: 4, title: "Imeddiate AFP case notification form" },
-    { id: 3, title: "Imeddiate AFP case notification form" },
-    { id: 2, title: "Imeddiate AFP case notification form" },
-  ];
+  const { localForms, refreshLocalForms, handleDeleteForm } = useForm();
+
+  const [loading, setLoading] = useState(false);
+  const [instances, setInstances] = useState<
+    {
+      formId: string;
+      instanceId: string;
+      displayName?: string;
+      createdAt?: string;
+      status?: string;
+    }[]
+  >([]);
+
+  const loadFinalized = useCallback(async () => {
+    setLoading(true);
+    try {
+      const rows: {
+        formId: string;
+        instanceId: string;
+        displayName?: string;
+        createdAt?: string;
+        status?: string;
+      }[] = [];
+      for (const f of localForms) {
+        try {
+          const inst = await odkStorage.listInstances(f.id);
+          for (const i of inst) {
+            const status = (i as any).status as string;
+            if (
+              status === "complete" ||
+              status === "submitted" ||
+              status === "finalized"
+            ) {
+              rows.push({
+                formId: f.id,
+                instanceId:
+                  i.instanceId || (i as any).instanceId || (i as any).id || "",
+                displayName:
+                  (i as any).displayName || i.instanceId || (i as any).id,
+                createdAt: (i as any).createdAt || (i as any).updatedAt,
+                status,
+              });
+            }
+          }
+        } catch (e) {
+          console.warn(`Failed to list instances for ${f.id}`, e);
+        }
+      }
+      setInstances(rows);
+    } catch (e) {
+      console.error("Failed to load finalized instances", e);
+    } finally {
+      setLoading(false);
+    }
+  }, [localForms]);
+
+  useEffect(() => {
+    if (tab === "finalized") loadFinalized();
+  }, [tab, loadFinalized]);
+
+  const onDeleteForm = async (formId: string) => {
+    Alert.alert("Delete Form", "Delete this form and all its instances?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            setLoading(true);
+            await handleDeleteForm(formId);
+            setInstances((prev) => prev.filter((r) => r.formId !== formId));
+          } catch (e) {
+            console.error("Failed to delete form", e);
+            Alert.alert("Error", "Failed to delete form");
+          } finally {
+            setLoading(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const onDeleteInstance = async (formId: string, instanceId: string) => {
+    Alert.alert("Delete Instance", "Delete this finalized instance?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            setLoading(true);
+            // @ts-ignore
+            await odkStorage.deleteInstance(formId, instanceId);
+            await loadFinalized();
+            await refreshLocalForms();
+          } catch (e) {
+            console.error("Failed to delete instance", e);
+            Alert.alert("Error", "Failed to delete instance");
+          } finally {
+            setLoading(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const renderBlank = ({ item }: { item: any }) => (
+    <AppCard className="mb-3 p-4" variant="elevated">
+      <View className="flex-row justify-between items-center">
+        <View className="flex-row items-center flex-1 mr-3">
+          <View className="w-10 h-10 rounded-full bg-orange-100 dark:bg-orange-900/30 items-center justify-center mr-3">
+            <Feather name="file" size={18} color="#f97316" />
+          </View>
+          <View className="flex-1">
+            <AppText className="font-semibold text-base">{item.title}</AppText>
+            <AppText className="text-xs text-gray-500 mt-0.5">
+              Version {item.version}
+            </AppText>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          onPress={() => onDeleteForm(item.id)}
+          className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/30 items-center justify-center active:bg-red-200"
+        >
+          <Feather name="trash-2" size={16} color="#ef4444" />
+        </TouchableOpacity>
+      </View>
+    </AppCard>
+  );
+
+  const renderFinalized = ({ item }: { item: any }) => (
+    <AppCard className="mb-3 p-4" variant="elevated">
+      <View className="flex-row justify-between items-center">
+        <View className="flex-row items-center flex-1 mr-3">
+          <View className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 items-center justify-center mr-3">
+            <Feather name="check-square" size={18} color="#8b5cf6" />
+          </View>
+          <View className="flex-1">
+            <AppText className="font-semibold text-base">
+              {item.displayName || item.instanceId}
+            </AppText>
+            <AppText className="text-xs text-gray-500 mt-0.5">
+              {item.formId}
+              {item.createdAt
+                ? ` • ${new Date(item.createdAt).toLocaleString()}`
+                : ""}
+            </AppText>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          onPress={() => onDeleteInstance(item.formId, item.instanceId)}
+          className="w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/30 items-center justify-center active:bg-red-200"
+        >
+          <Feather name="trash-2" size={16} color="#ef4444" />
+        </TouchableOpacity>
+      </View>
+    </AppCard>
+  );
+
   return (
     <AppContainer className="flex-1">
-      <DynamicHeader
-        currentRoute={"Delete form"}
+      <FormHeader
+        currentRoute="Delete Forms"
         goBack={() => route.replace("/(tabs)")}
-        onInfoPress={() => route.push(`/${"help"}` as never)}
-        onSettingsPress={() => route.push("/settings")}
       />
-      <View className="flex flex-row items-center justify-around pt-6 border-b">
-        <Pressable
-          onPress={() => setCurrentRoute("save")}
-          className={`${currentRoute === "save" && "border-b-2 border-[#0a7ea4]"}`}
+
+      {/* Tab Bar */}
+      <View className="flex-row border-b border-gray-200 dark:border-gray-700">
+        <TouchableOpacity
+          onPress={() => setTab("blank")}
+          className={`flex-1 items-center py-3 ${tab === "blank" ? "border-b-2 border-blue-500" : ""}`}
         >
-          <AppText type="subheading">Save Form </AppText>
-        </Pressable>
-        <Pressable
-          onPress={() => setCurrentRoute("blank")}
-          className={` ${currentRoute === "blank" && "border-b-2 border-[#0a7ea4]"}`}
+          <AppText
+            className={`font-semibold text-sm ${tab === "blank" ? "text-blue-500" : "text-gray-400"}`}
+          >
+            Blank Forms
+          </AppText>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setTab("finalized")}
+          className={`flex-1 items-center py-3 ${tab === "finalized" ? "border-b-2 border-blue-500" : ""}`}
         >
-          <AppText type="subheading">Blank Form </AppText>
-        </Pressable>
+          <AppText
+            className={`font-semibold text-sm ${tab === "finalized" ? "text-blue-500" : "text-gray-400"}`}
+          >
+            Finalized Forms
+          </AppText>
+        </TouchableOpacity>
       </View>
-      {finalizedForms.length === 0 && currentRoute === "save" ? (
-        <View className="items-center my-auto">
-          <Feather
-            name="download"
-            size={hp(15)}
-            className="text-gray-700 font-bold"
+
+      {loading ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="large" color="#3b82f6" />
+        </View>
+      ) : tab === "blank" ? (
+        localForms.length === 0 ? (
+          <View className="flex-1 items-center justify-center px-6">
+            <View className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center mb-4">
+              <Feather name="download" size={36} color="#9ca3af" />
+            </View>
+            <AppText className="text-gray-400 text-base text-center">
+              No downloaded forms found.
+            </AppText>
+          </View>
+        ) : (
+          <FlatList
+            data={localForms}
+            keyExtractor={(i) => i.id}
+            renderItem={renderBlank}
+            contentContainerStyle={{ padding: 16 }}
           />
-          <AppText className=" text-center py-2">
-            No available finalize forms to delete.
-          </AppText>
-          <AppText className=" text-center py-2">
-            Finalize forms to delete.
+        )
+      ) : instances.length === 0 ? (
+        <View className="flex-1 items-center justify-center px-6">
+          <View className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center mb-4">
+            <Feather name="file-text" size={36} color="#9ca3af" />
+          </View>
+          <AppText className="text-gray-400 text-base text-center">
+            No finalized forms found.
           </AppText>
         </View>
       ) : (
-        <View className="space-y-3">
-          {currentRoute === "save" &&
-            finalizedForms.map((final, i) => (
-              <View
-                key={i}
-                className="p-4 border ${borderClass} rounded-lg flex justify-between items-center"
-              >
-                <View>
-                  <AppText className="font-medium">
-                    {final.form.id} - Finalized
-                  </AppText>
-                  <AppText className="text-sm">
-                    Finalized: {final.finalizedDate}
-                  </AppText>
-                </View>
-                <AppButton
-                  onPress={() => {
-                    setFinalizedForms(
-                      finalizedForms.filter((_, index) => index !== i)
-                    );
-                    alert("Finalized form deleted");
-                  }}
-                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 active:bg-red-800 transition-colors text-sm"
-                >
-                  Delete
-                </AppButton>
-              </View>
-            ))}
-        </View>
-      )}
-      {downloadedForms.length === 0 && currentRoute === "blank" ? (
-        <View className="items-center my-auto">
-          <Feather
-            name="download"
-            size={hp(15)}
-            className="text-gray-700 font-bold"
-          />
-          <AppText className=" text-center py-2">
-            No available forms to delete.
-          </AppText>
-        </View>
-      ) : (
-        <View className="space-y-3 pt-4 px-4">
-          {currentRoute === "blank" &&
-            downloadedForms.map((form, i) => (
-              <View
-                key={i}
-                className="p-4 border ${borderClass} rounded-lg flex flex-row justify-between items-center"
-              >
-                <View>
-                  <AppText type="subheading">{form.id} - Draft</AppText>
-                  <AppText className="text-sm">{form.title}</AppText>
-                </View>
-                <AppButton
-                  onPress={() => {
-                    setDownloadedForms(
-                      downloadedForms.filter((_, index) => index !== i)
-                    );
-                    alert("Draft deleted");
-                  }}
-                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 active:bg-red-800 transition-colors text-sm"
-                >
-                  Delete
-                </AppButton>
-              </View>
-            ))}
-        </View>
+        <FlatList
+          data={instances}
+          keyExtractor={(i) => `${i.formId}_${i.instanceId}`}
+          renderItem={renderFinalized}
+          contentContainerStyle={{ padding: 16 }}
+        />
       )}
     </AppContainer>
   );

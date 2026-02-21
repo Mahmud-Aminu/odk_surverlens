@@ -1,7 +1,6 @@
 import useTheme from "@/theme";
 import { clsx } from "clsx";
 import { View, ViewProps } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 type AppContainerProps = ViewProps & {
   className: string;
@@ -18,11 +17,9 @@ const AppContainer = ({
   const mergedClass = clsx("min-h-screen", bgClass, className);
 
   return (
-    <SafeAreaView style={{ flex: 1 }}>
-      <View style={{ flex: 1 }} className={mergedClass} {...otherProps}>
-        {children}
-      </View>
-    </SafeAreaView>
+    <View style={{ flex: 1 }} className={mergedClass} {...otherProps}>
+      {children}
+    </View>
   );
 };
 export default AppContainer;

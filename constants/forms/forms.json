@@ -1,0 +1,1043 @@
+{
+  "forms": [
+    {
+      "id": "afp_f001",
+      "title": "AFP Immediate Case Notification Form",
+      "version": "1.0",
+      "description": "Acute Flaccid Paralysis Surveillance System - Immediate AFP Case Notification Form",
+      "fields": [
+        {
+          "type": "group",
+          "name": "step_1_patient_id",
+          "label": "Step 1: Patient Identification",
+          "appearance": "field-list",
+          "fields": [
+            {
+              "type": "text",
+              "name": "child_name",
+              "label": "1. Name of Child with AFP",
+              "required": true
+            },
+            {
+              "type": "select_one",
+              "name": "sex",
+              "label": "2. Sex",
+              "required": true,
+              "choices": [
+                {
+                  "value": "male",
+                  "label": "Male"
+                },
+                {
+                  "value": "female",
+                  "label": "Female"
+                }
+              ]
+            },
+            {
+              "type": "date",
+              "name": "date_of_birth",
+              "label": "3. Date of Birth",
+              "required": true
+            },
+            {
+              "type": "integer",
+              "name": "age_years",
+              "label": "4. Age (Years)",
+              "min": 0,
+              "max": 15
+            },
+            {
+              "type": "integer",
+              "name": "age_months",
+              "label": "Age (Months)",
+              "min": 0,
+              "max": 180
+            },
+            {
+              "type": "text",
+              "name": "father_name",
+              "label": "5. Father's Name",
+              "required": true
+            },
+            {
+              "type": "text",
+              "name": "mother_name",
+              "label": "6. Mother's Name",
+              "required": true
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "step_2_address",
+          "label": "Step 2: Geographic Location",
+          "appearance": "field-list",
+          "fields": [
+            {
+              "type": "text",
+              "name": "child_address",
+              "label": "7. Address of Child",
+              "required": true,
+              "inputType": "multiline"
+            },
+            {
+              "type": "text",
+              "name": "village_city",
+              "label": "8. Village/City",
+              "required": true
+            },
+            {
+              "type": "text",
+              "name": "address_lga",
+              "label": "LGA of Residence",
+              "required": true
+            },
+            {
+              "type": "text",
+              "name": "permanent_address",
+              "label": "9. Permanent Address (if different)",
+              "inputType": "multiline"
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "step_3_clinical",
+          "label": "Step 3: Clinical & Hospitalization",
+          "appearance": "field-list",
+          "fields": [
+            {
+              "type": "select_one",
+              "name": "is_hospitalized",
+              "label": "10. Is the Child Hospitalized?",
+              "required": true,
+              "choices": [
+                {
+                  "value": "yes",
+                  "label": "Yes"
+                },
+                {
+                  "value": "no",
+                  "label": "No"
+                }
+              ]
+            },
+            {
+              "type": "date",
+              "name": "hospitalization_date",
+              "label": "11. Date of Hospitalization",
+              "relevant": "${is_hospitalized} = 'yes'"
+            },
+            {
+              "type": "text",
+              "name": "hospital_ward",
+              "label": "12. Hospital Ward",
+              "relevant": "${is_hospitalized} = 'yes'"
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "step_4_notification_action",
+          "label": "Step 4: Notification & Action Taken",
+          "appearance": "field-list",
+          "fields": [
+            {
+              "type": "date",
+              "name": "paralysis_onset_date",
+              "label": "Date of onset of Paralysis",
+              "required": true
+            },
+            {
+              "type": "date",
+              "name": "notification_date_recorded",
+              "label": "Date of Notification",
+              "required": true
+            },
+            {
+              "type": "text",
+              "name": "notified_by",
+              "label": "Notified by: (Name and Sign)",
+              "required": true
+            },
+            {
+              "type": "group",
+              "name": "action_taken",
+              "label": "Action Taken",
+              "fields": [
+                {
+                  "type": "select_one",
+                  "name": "inform_mother_stool",
+                  "label": "1. Inform Mother about Stool collection",
+                  "choices": [
+                    {
+                      "value": "yes",
+                      "label": "Yes"
+                    },
+                    {
+                      "value": "no",
+                      "label": "No"
+                    }
+                  ]
+                },
+                {
+                  "type": "select_one",
+                  "name": "confirm_address",
+                  "label": "2. Confirm Address of the Child",
+                  "choices": [
+                    {
+                      "value": "yes",
+                      "label": "Yes"
+                    },
+                    {
+                      "value": "no",
+                      "label": "No"
+                    }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "name": "other_actions",
+                  "label": "3. Others",
+                  "inputType": "multiline"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "step_5_Focal_Person",
+          "label": "Step 5: Focal Person Name",
+          "appearance": "field-list",
+          "fields": [
+            {
+              "type": "date",
+              "name": "notification_date",
+              "label": "Date",
+              "required": true
+            },
+            {
+              "type": "text",
+              "name": "FP_name",
+              "label": "Focal Person Name",
+              "required": true
+            },
+            {
+              "type": "text",
+              "name": "FP_signature",
+              "label": "Focal Person Signature",
+              "required": true
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "instanceName": "AFP Case - ${child_name}",
+        "submissionUrl": "/afp/submit"
+      }
+    },
+    {
+      "id": "afp_f002",
+      "title": "Health Facilities Active Surveillance Form",
+      "version": "1.0",
+      "description": "Form AFP-F002 - Health Facilities Active Surveillance",
+      "fields": [
+        {
+          "type": "text",
+          "name": "state",
+          "label": "State",
+          "required": true
+        },
+        {
+          "type": "text",
+          "name": "lga",
+          "label": "LGA",
+          "required": true
+        },
+        {
+          "type": "text",
+          "name": "health_facility_name",
+          "label": "Name of Health Facility",
+          "required": true
+        },
+        {
+          "type": "text",
+          "name": "month",
+          "label": "Month",
+          "required": true
+        },
+        {
+          "type": "date",
+          "name": "week_beginning",
+          "label": "Week Beginning",
+          "required": true
+        },
+        {
+          "type": "integer",
+          "name": "week_no",
+          "label": "Week No",
+          "required": true
+        },
+        {
+          "type": "repeat",
+          "name": "surveillance_visits",
+          "label": "Surveillance Visits",
+          "fields": [
+            {
+              "type": "text",
+              "name": "unit_ward",
+              "label": "Unit or Ward Visits",
+              "required": true
+            },
+            {
+              "type": "date",
+              "name": "visit_date",
+              "label": "Date of Visit",
+              "required": true
+            },
+            {
+              "type": "text",
+              "name": "health_worker_signature",
+              "label": "Signature of Health Worker Contacted"
+            },
+            {
+              "type": "integer",
+              "name": "cases_seen",
+              "label": "No of AFP or Other Cases Seen",
+              "min": 0
+            }
+          ]
+        },
+        {
+          "type": "text",
+          "name": "focal_person_name",
+          "label": "Name/Signature of Focal Person",
+          "required": true
+        },
+        {
+          "type": "date",
+          "name": "completion_date",
+          "label": "Date",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "idsr_001b",
+      "title": "Lab Specimen Collection/Reporting Form",
+      "version": "1.0",
+      "description": "For Immediate Case-based Surveillance IDSR 001B",
+      "fields": [
+        {
+          "type": "group",
+          "name": "step_1_specimen_collection",
+          "label": "Step 1: Specimen Collection Information",
+          "appearance": "field-list",
+          "fields": [
+            {
+              "type": "text",
+              "name": "lab_name",
+              "label": "1. Lab Specimen Collected/Tested",
+              "required": true
+            },
+            {
+              "type": "text",
+              "name": "health_facility",
+              "label": "2. Reporting Health Facility",
+              "required": true
+            },
+            {
+              "type": "date",
+              "name": "specimen_collection_date",
+              "label": "3. Date of Specimen Collection",
+              "required": true
+            },
+            {
+              "type": "select_multiple",
+              "name": "specimen_type",
+              "label": "4. Type of Specimen",
+              "required": true,
+              "choices": [
+                { "value": "stool", "label": "Stool" },
+                { "value": "blood", "label": "Blood" },
+                { "value": "csf", "label": "CSF" },
+                { "value": "other", "label": "Other (Specify)" }
+              ]
+            },
+            {
+              "type": "text",
+              "name": "specimen_type_other",
+              "label": "5. Other Specimen Type (Specify)",
+              "relevant": "selected(${specimen_type}, 'other')",
+              "inputType": "multiline"
+            },
+            {
+              "type": "text",
+              "name": "id_number",
+              "label": "6. ID Number",
+              "required": true
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "step_2_lab_processing",
+          "label": "Step 2: Laboratory Processing",
+          "appearance": "field-list",
+          "fields": [
+            {
+              "type": "date",
+              "name": "lab_test_date",
+              "label": "7. Date Lab Received Specimen"
+            },
+            {
+              "type": "select_one",
+              "name": "specimen_condition",
+              "label": "8. Specimen Condition",
+              "choices": [
+                { "value": "adequate", "label": "Adequate" },
+                { "value": "not_adequate", "label": "Not Adequate" }
+              ]
+            },
+            {
+              "type": "text",
+              "name": "examiner_condition",
+              "label": "9. Examiner/Condition"
+            },
+            {
+              "type": "select_one",
+              "name": "test_type",
+              "label": "10. Type of Test",
+              "choices": [
+                { "value": "culture", "label": "Culture" },
+                { "value": "microscopy", "label": "Microscopy" },
+                { "value": "serology", "label": "Serology" },
+                { "value": "pcr", "label": "PCR" }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "step_3_test_results",
+          "label": "Step 3: Test Results",
+          "appearance": "field-list",
+          "fields": [
+            {
+              "type": "select_one",
+              "name": "malaria",
+              "label": "1. Malaria (P. falciparum / P. Vivax)",
+              "choices": [
+                { "value": "positive", "label": "Positive" },
+                { "value": "negative", "label": "Negative" },
+                { "value": "pending", "label": "Pending" }
+              ]
+            },
+            {
+              "type": "select_one",
+              "name": "cholera",
+              "label": "2. Cholera",
+              "choices": [
+                { "value": "positive", "label": "Positive" },
+                { "value": "negative", "label": "Negative" }
+              ]
+            },
+            {
+              "type": "text",
+              "name": "meningitis_h",
+              "label": "3. Meningitis - N. meningitidis (Culture/Latex/Gram stain)"
+            },
+            {
+              "type": "text",
+              "name": "meningitis_s",
+              "label": "4. Meningitis - S. pneumoniae (Culture/Latex/Gram stain)"
+            },
+            {
+              "type": "text",
+              "name": "meningitis_hi",
+              "label": "5. Meningitis - H. influenzae (Culture/Latex/Gram stain)"
+            },
+            {
+              "type": "select_one",
+              "name": "shigella_dysenteriae",
+              "label": "6. Shigella dysenteriae",
+              "choices": [
+                { "value": "sd_type_1", "label": "SD Type 1" },
+                { "value": "other_shigella", "label": "Other Shigella Types" },
+                { "value": "positive", "label": "Positive" },
+                { "value": "negative", "label": "Negative" },
+                { "value": "no_shigella", "label": "No Shigella" },
+                { "value": "is_isolate", "label": "Isolate" },
+                { "value": "forthcoming", "label": "Forthcoming" }
+              ]
+            },
+            {
+              "type": "group",
+              "name": "viral_detection",
+              "label": "7. Viral Detection",
+              "fields": [
+                {
+                  "type": "select_one",
+                  "name": "yellow_fever",
+                  "label": "Yellow Fever",
+                  "choices": [
+                    { "value": "positive", "label": "Positive" },
+                    { "value": "negative", "label": "Negative" }
+                  ]
+                },
+                {
+                  "type": "select_one",
+                  "name": "measles",
+                  "label": "Measles (IgM)",
+                  "choices": [
+                    { "value": "positive", "label": "Positive" },
+                    { "value": "negative", "label": "Negative" }
+                  ]
+                },
+                {
+                  "type": "select_one",
+                  "name": "rubella",
+                  "label": "Rubella (IgM)",
+                  "choices": [
+                    { "value": "positive", "label": "Positive" },
+                    { "value": "negative", "label": "Negative" }
+                  ]
+                },
+                {
+                  "type": "select_one",
+                  "name": "dengue",
+                  "label": "Dengue",
+                  "choices": [
+                    { "value": "positive", "label": "Positive" },
+                    { "value": "negative", "label": "Negative" }
+                  ]
+                },
+                {
+                  "type": "select_one",
+                  "name": "ebola",
+                  "label": "Ebola",
+                  "choices": [
+                    { "value": "positive", "label": "Positive" },
+                    { "value": "negative", "label": "Negative" }
+                  ]
+                },
+                {
+                  "type": "select_one",
+                  "name": "lassa",
+                  "label": "Lassa (IgM)",
+                  "choices": [
+                    { "value": "positive", "label": "Positive" },
+                    { "value": "negative", "label": "Negative" }
+                  ]
+                },
+                {
+                  "type": "select_one",
+                  "name": "marburg",
+                  "label": "Marburg (IgM)",
+                  "choices": [
+                    { "value": "positive", "label": "Positive" },
+                    { "value": "negative", "label": "Negative" }
+                  ]
+                },
+                {
+                  "type": "select_one",
+                  "name": "avian_influenza",
+                  "label": "Avian Influenza (H5N1 RT-PCR)",
+                  "choices": [
+                    { "value": "positive", "label": "Positive" },
+                    { "value": "negative", "label": "Negative" }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "text",
+              "name": "other_lab_test",
+              "label": "8. Other Lab Test (Specify)",
+              "inputType": "multiline"
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "step_4_results_submission",
+          "label": "Step 4: Results Submission & Confirmation",
+          "appearance": "field-list",
+          "fields": [
+            {
+              "type": "date",
+              "name": "results_sent_date",
+              "label": "1. Date Form and Results Sent",
+              "required": true
+            },
+            {
+              "type": "text",
+              "name": "lab_sending_results",
+              "label": "2. Name of Lab Sending Results"
+            },
+            {
+              "type": "text",
+              "name": "other_pending_results",
+              "label": "3. Other Pending Results",
+              "inputType": "multiline"
+            },
+            {
+              "type": "text",
+              "name": "lab_technician_name",
+              "label": "4. Name of Lab Technician",
+              "required": true
+            },
+            {
+              "type": "text",
+              "name": "lab_technician_signature",
+              "label": "5. Signature",
+              "required": true
+            },
+            {
+              "type": "date",
+              "name": "ida_received_date",
+              "label": "6. Date IDA/Receiver Received Test Results"
+            },
+            {
+              "type": "date",
+              "name": "results_sent_to_facility",
+              "label": "7. Date Results Sent to Health Facility"
+            },
+            {
+              "type": "date",
+              "name": "results_received_by_facility",
+              "label": "8. Date Results Received at Health Facility"
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "instanceName": "Lab Report - ${id_number}",
+        "submissionUrl": "/idsr/lab/submit"
+      }
+    },
+    {
+      "id": "idsr_001c",
+      "title": "Line List - Reporting from Health Facility to LGA",
+      "version": "1.0",
+      "description": "IDSR 001C - Line list for reporting from health facility to LGA and for use during outbreaks",
+      "fields": [
+        {
+          "type": "group",
+          "name": "step_1_reporting_information",
+          "label": "Step 1: Reporting Information",
+          "appearance": "field-list",
+          "fields": [
+            {
+              "type": "text",
+              "name": "state",
+              "label": "1. State",
+              "required": true
+            },
+            {
+              "type": "text",
+              "name": "lga",
+              "label": "2. LGA",
+              "required": true
+            },
+            {
+              "type": "text",
+              "name": "health_facility",
+              "label": "3. Reporting Health Facility",
+              "required": true
+            },
+            {
+              "type": "text",
+              "name": "ward_name",
+              "label": "4. Ward Name",
+              "required": true
+            },
+            {
+              "type": "integer",
+              "name": "reporting_week",
+              "label": "5. Reporting Week (Date received at LGA)",
+              "required": true,
+              "min": 1,
+              "max": 53
+            },
+            {
+              "type": "integer",
+              "name": "year",
+              "label": "6. Year",
+              "required": true,
+              "min": 2000
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "step_2_patient_line_list",
+          "label": "Step 2: Patient Line List",
+          "appearance": "field-list",
+          "fields": [
+            {
+              "type": "repeat",
+              "name": "patient_records",
+              "label": "Patient Records",
+              "fields": [
+                {
+                  "type": "integer",
+                  "name": "serial_number",
+                  "label": "1. Serial Number (S/N)",
+                  "required": true,
+                  "min": 1
+                },
+                {
+                  "type": "text",
+                  "name": "patient_id",
+                  "label": "2. Case ID or Outbreak Number",
+                  "required": true
+                },
+                {
+                  "type": "text",
+                  "name": "patient_name",
+                  "label": "3. Name of Patient",
+                  "required": true
+                },
+                {
+                  "type": "integer",
+                  "name": "age",
+                  "label": "4. Age",
+                  "min": 0
+                },
+                {
+                  "type": "select_one",
+                  "name": "sex",
+                  "label": "5. Sex",
+                  "choices": [
+                    { "value": "male", "label": "Male" },
+                    { "value": "female", "label": "Female" }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "name": "village",
+                  "label": "6. Village / Town / Neighborhood / Ward",
+                  "required": true
+                },
+                {
+                  "type": "date",
+                  "name": "date_seen",
+                  "label": "7. Date Seen / Date Received at LGA"
+                },
+                {
+                  "type": "text",
+                  "name": "disease",
+                  "label": "8. Disease"
+                },
+                {
+                  "type": "select_one",
+                  "name": "lab_confirmed",
+                  "label": "9. Lab Confirmed Case",
+                  "choices": [
+                    { "value": "yes", "label": "Yes" },
+                    { "value": "no", "label": "No" },
+                    { "value": "pending", "label": "Pending" }
+                  ]
+                },
+                {
+                  "type": "select_one",
+                  "name": "outcome",
+                  "label": "10. Outcome",
+                  "choices": [
+                    { "value": "alive", "label": "Alive" },
+                    { "value": "dead", "label": "Dead" }
+                  ]
+                },
+                {
+                  "type": "text",
+                  "name": "comments",
+                  "label": "11. Comments",
+                  "inputType": "multiline"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "instanceName": "IDSR Line List - ${health_facility} - Week ${reporting_week}",
+        "submissionUrl": "/idsr/line-list/submit"
+      }
+    },
+    {
+      "id": "idsr_001a",
+      "title": "Immediate Case-Based Reporting Form",
+      "version": "1.0",
+      "description": "Event / Immediate / Case-based Surveillance Reporting Form IDSR 001A",
+      "fields": [
+        {
+          "type": "group",
+          "name": "step_1_reporting_info",
+          "label": "Step 1: Reporting Information",
+          "appearance": "field-list",
+          "fields": [
+            {
+              "type": "text",
+              "name": "reporting_health_facility",
+              "label": "1. Reporting Health Facility",
+              "required": true
+            },
+            {
+              "type": "text",
+              "name": "identification_number",
+              "label": "2. Identification Number",
+              "required": true
+            },
+            {
+              "type": "date",
+              "name": "form_received_date",
+              "label": "3. Date form received at SMOH or the national level",
+              "required": true
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "step_2_disease_information",
+          "label": "Step 2: Disease Information",
+          "appearance": "field-list",
+          "fields": [
+            {
+              "type": "select_multiple",
+              "name": "diseases",
+              "label": "4. Select Disease(s)",
+              "required": true,
+              "choices": [
+                { "value": "cholera", "label": "Cholera" },
+                { "value": "dracunculiasis", "label": "Dracunculiasis" },
+                { "value": "neonatal_tetanus", "label": "Neonatal Tetanus" },
+                { "value": "measles", "label": "Measles" },
+                { "value": "meningitis", "label": "Meningitis" },
+                { "value": "hpai", "label": "HPAI" },
+                {
+                  "value": "viral_hemorrhagic_fever",
+                  "label": "Viral Hemorrhagic Fever (e.g. Lassa fever)"
+                },
+                { "value": "other", "label": "Others/specify Fever" }
+              ]
+            },
+            {
+              "type": "text",
+              "name": "other_disease",
+              "label": "5. Other disease/fever (specify)",
+              "relevant": "selected(${diseases}, 'other')",
+              "inputType": "multiline"
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "step_3_patient_identification",
+          "label": "Step 3: Patient Identification",
+          "appearance": "field-list",
+          "fields": [
+            {
+              "type": "text",
+              "name": "patient_name",
+              "label": "6. Name of Patient",
+              "required": true
+            },
+            {
+              "type": "date",
+              "name": "date_of_birth",
+              "label": "7. Date of Birth (DOB)"
+            },
+            {
+              "type": "integer",
+              "name": "age_years",
+              "label": "8. Age (If DOB unknown) - Years",
+              "min": 0
+            },
+            {
+              "type": "integer",
+              "name": "age_months",
+              "label": "Age (Months if <12)",
+              "min": 0,
+              "max": 11,
+              "relevant": "${age_years} = 0"
+            },
+            {
+              "type": "integer",
+              "name": "age_days",
+              "label": "Age (Days - NNT only)",
+              "min": 0,
+              "max": 28
+            },
+            {
+              "type": "select_one",
+              "name": "sex",
+              "label": "9. Sex",
+              "required": true,
+              "choices": [
+                { "value": "male", "label": "Male" },
+                { "value": "female", "label": "Female" }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "step_4_patient_address",
+          "label": "Step 4: Patient Address",
+          "appearance": "field-list",
+          "fields": [
+            {
+              "type": "select_one",
+              "name": "address_type",
+              "label": "10. Patient's Address Type",
+              "choices": [
+                { "value": "urban", "label": "Urban" },
+                { "value": "rural", "label": "Rural" }
+              ]
+            },
+            {
+              "type": "text",
+              "name": "settlement_village",
+              "label": "11. Settlement/Village"
+            },
+            {
+              "type": "text",
+              "name": "ward",
+              "label": "12. Ward"
+            },
+            {
+              "type": "text",
+              "name": "lga",
+              "label": "13. LGA",
+              "required": true
+            },
+            {
+              "type": "text",
+              "name": "state",
+              "label": "14. State",
+              "required": true
+            },
+            {
+              "type": "text",
+              "name": "residential_address",
+              "label": "15. Exact Residential Address",
+              "inputType": "multiline"
+            },
+            {
+              "type": "text",
+              "name": "mother_father_name",
+              "label": "16. Mother/Father Name (if neonate/child)",
+              "inputType": "multiline"
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "step_5_clinical_information",
+          "label": "Step 5: Clinical & Vaccination Information",
+          "appearance": "field-list",
+          "fields": [
+            {
+              "type": "date",
+              "name": "date_seen",
+              "label": "17. Date Seen at Health Facility"
+            },
+            {
+              "type": "date",
+              "name": "date_notified_lga",
+              "label": "18. Date Health Facility Notified LGA"
+            },
+            {
+              "type": "date",
+              "name": "date_of_onset",
+              "label": "19. Date of Onset"
+            },
+            {
+              "type": "text",
+              "name": "number_vaccine_doses",
+              "label": "20. Number of Vaccine Doses Received (0 = Unknown)"
+            },
+            {
+              "type": "date",
+              "name": "last_vaccination_date",
+              "label": "21. Date of Last Vaccination"
+            }
+          ]
+        },
+        {
+          "type": "group",
+          "name": "step_6_exposure_outcome",
+          "label": "Step 6: Exposure & Outcome",
+          "appearance": "field-list",
+          "fields": [
+            {
+              "type": "select_one",
+              "name": "close_contact_poultry",
+              "label": "22. Close contact with infected poultry",
+              "choices": [
+                { "value": "yes", "label": "Yes" },
+                { "value": "no", "label": "No" }
+              ]
+            },
+            {
+              "type": "select_one",
+              "name": "close_contact_avian",
+              "label": "23. Close contact with suspected/confirmed Avian influenza case",
+              "choices": [
+                { "value": "yes", "label": "Yes" },
+                { "value": "no", "label": "No" }
+              ]
+            },
+            {
+              "type": "select_one",
+              "name": "associated_with_outbreak",
+              "label": "24. Associated with an outbreak?",
+              "choices": [
+                { "value": "yes", "label": "Yes" },
+                { "value": "no", "label": "No" }
+              ]
+            },
+            {
+              "type": "select_one",
+              "name": "patient_status",
+              "label": "25. Patient Status",
+              "choices": [
+                { "value": "inpatient", "label": "Inpatient" },
+                { "value": "outpatient", "label": "Outpatient" }
+              ]
+            },
+            {
+              "type": "select_one",
+              "name": "outcome",
+              "label": "26. Outcome",
+              "choices": [
+                { "value": "alive", "label": "Alive" },
+                { "value": "dead", "label": "Dead" },
+                { "value": "discarded", "label": "Discarded" },
+                { "value": "unknown", "label": "Unknown" }
+              ]
+            },
+            {
+              "type": "select_one",
+              "name": "final_classification",
+              "label": "27. Final Classification of Case",
+              "choices": [
+                { "value": "confirmed", "label": "Confirmed" },
+                { "value": "probable", "label": "Probable" },
+                { "value": "discarded", "label": "Discarded" },
+                { "value": "suspect", "label": "Suspect" }
+              ]
+            }
+          ]
+        }
+      ],
+      "metadata": {
+        "instanceName": "IDSR Case - ${patient_name}",
+        "submissionUrl": "/idsr/submit"
+      }
+    }
+  ]
+}

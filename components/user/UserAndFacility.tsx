@@ -3,22 +3,18 @@ import useTheme from "@/theme";
 import { Feather } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import LottieView from "lottie-react-native";
 import React, { useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Dimensions,
   FlatList,
   Modal,
-  Pressable,
-  Text,
-  TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
-import { heightPercentageToDP as hp } from "react-native-responsive-screen";
+import AppButton from "../common/AppButton";
 import AppCard from "../common/AppCard";
 import AppText from "../common/AppText";
+import AppTextInput from "../common/AppTextInput";
 
 const { width } = Dimensions.get("window");
 
@@ -50,11 +46,15 @@ const UserAndFacilityModal = ({
   setEditForm,
   setOpenEditFacility,
   setOpenEditUserModal,
+  visible,
+  onClose
 }: {
-  currentRoute: string;
-  setEditForm: () => void;
-  setOpenEditUserModal: () => void;
-  setOpenEditFacility: () => void;
+  currentRoute: string; // 'user' or 'facility'
+  setEditForm?: () => void;
+  setOpenEditUserModal?: () => void;
+  setOpenEditFacility?: () => void;
+  visible: boolean;
+  onClose: () => void;
 }) => {
   const [step, setStep] = useState(0);
   const [formData, setFormData] = useState({
@@ -69,11 +69,22 @@ const UserAndFacilityModal = ({
   const [showSuccess, setShowSuccess] = useState(false);
   const [openSignModal, setOpenSignModal] = useState(false);
 
-  const route = useRouter();
-
+  const router = useRouter();
   const { mode } = useTheme();
 
-  const STEP_COUNT = facilitiesList.length;
+  // Reset state when modal opens/closes or route changes
+  useEffect(() => {
+    if (visible) {
+      setStep(0);
+      setShowSuccess(false);
+      // Load existing data if needed
+      AsyncStorage.getItem("userData").then(data => {
+        if (data) {
+          setFormData(JSON.parse(data));
+        }
+      });
+    }
+  }, [visible, currentRoute]);
 
   const filtered = facilitiesList.filter((f) =>
     f.hname.toLowerCase().includes(search.toLowerCase())
@@ -81,257 +92,193 @@ const UserAndFacilityModal = ({
 
   useEffect(() => {
     setFilteredFacilities(filtered);
-  }, [search, filtered]);
+  }, [search]);
 
   const handleNext = () => {
-    if (step < STEP_COUNT - 1) {
-      setStep(step + 1);
-    }
-    console.log(step);
+    setStep((prev) => prev + 1);
   };
 
   const handleBack = () => {
-    if (step > 0) {
-      setStep(step - 1);
-    }
+    setStep((prev) => Math.max(0, prev - 1));
   };
 
   const handleSave = async () => {
     setIsSaving(true);
+    // Simulate API call
     await new Promise((r) => setTimeout(r, 1500));
     await AsyncStorage.setItem("userData", JSON.stringify(formData));
     setIsSaving(false);
     setShowSuccess(true);
     setTimeout(() => {
-      route.push("/(tabs)/");
-    }, 3000);
+      onClose();
+      setShowSuccess(false);
+    }, 2000);
   };
 
-  const textColor = mode === "dark" ? "text-gray-400" : "text-gray-600";
-
   return (
-    <Modal className="flex-1 py-32 items-center">
-      {showSuccess ? (
-        <AppCard className="flex flex-col items-center w-full">
-          <LottieView
-            source={require("../../../assets/lottie/Success.json")}
-            autoPlay
-            loop={false}
-            style={{ width: width * 0.6, height: width * 0.6 }}
-          />
-          <Text className="text-green-600 text-xl font-semibold mt-4">
-            Data saved successfully!
-          </Text>
+    <Modal visible={visible} animationType="slide" transparent>
+      <View className="flex-1 justify-center items-center bg-black/50 px-4">
+        <AppCard className="w-full max-w-md max-h-[80%] rounded-2xl" variant="elevated">
+
+          {/* Header with Close Button */}
+          <View className="flex-row justify-between items-center mb-4">
+            <AppText className="font-bold text-lg capitalize">
+              {currentRoute === "user" ? "User Profile" : "Facility Selection"}
+            </AppText>
+            <TouchableOpacity onPress={onClose} className='p-4'>
+              <Feather name="x" size={24} color={mode === "dark" ? "#e5e7eb" : "#374151"} />
+            </TouchableOpacity>
+          </View>
+
+          {showSuccess ? (
+            <View className="items-center py-8">
+              {/* Fallback icon if Lottie fails or isn't set up */}
+              <View className="mb-4 bg-green-100 dark:bg-green-900/30 p-6 rounded-full">
+                <Feather name="check" size={48} color="#10b981" />
+              </View>
+              <AppText className="text-green-600 dark:text-green-400 text-xl font-semibold mt-4 text-center">
+                Data saved successfully!
+              </AppText>
+            </View>
+          ) : (
+            <>
+              {/* Content based on Route and Step */}
+              <View className="mb-6">
+
+                {/* USER ROUTE */}
+                {currentRoute === "user" && (
+                  <View className="gap-4">
+                    {/* Name Input */}
+                    <View>
+                      <AppTextInput
+                        label="SPF Name"
+                        placeholder="Enter Survey Focal Person Name"
+                        value={formData.name}
+                        onChangeText={(t) => setFormData({ ...formData, name: t })}
+                        leftIcon={<Feather name="user" size={20} color="#9ca3af" />}
+                      />
+                    </View>
+
+                    {/* Signature Button */}
+                    <View>
+                      <AppText className="mb-2 font-bold text-gray-700 dark:text-gray-300">Signature</AppText>
+                      <TouchableOpacity
+                        onPress={() => setOpenSignModal(true)}
+                        className="flex-row items-center justify-center gap-3 p-4 border border-dashed border-blue-300 dark:border-blue-700 rounded-xl bg-blue-50 dark:bg-blue-900/10 active:bg-blue-100"
+                      >
+                        <Feather name="edit-2" size={20} color="#2563eb" />
+                        <AppText className="text-blue-600 dark:text-blue-400 font-medium">
+                          {formData.sign ? "Update Signature" : "Add Signature (Optional)"}
+                        </AppText>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
+                {/* FACILITY ROUTE */}
+                {currentRoute === "facility" && (
+                  <View className="gap-4">
+                    <View className="z-10">
+                      <AppTextInput
+                        label="Search Facility"
+                        placeholder="Search by name..."
+                        value={search}
+                        onChangeText={(t) => {
+                          setSearch(t);
+                          setShowSuggestion(true);
+                        }}
+                        onFocus={() => setShowSuggestion(true)}
+                        leftIcon={<Feather name="search" size={20} color="#9ca3af" />}
+                      />
+
+                      {/* Selected Facility Display */}
+                      {formData.hospital.hname ? (
+                        <View className="mt-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <AppText className="text-xs text-blue-600 dark:text-blue-400 font-bold uppercase mb-1">Selected</AppText>
+                          <AppText className="font-semibold">{formData.hospital.hname}</AppText>
+                          <AppText className="text-xs text-gray-500">{formData.hospital.haddrs}</AppText>
+                        </View>
+                      ) : null}
+
+                      {/* Suggestions List */}
+                      {showSuggestion && search.length > 0 && (
+                        <View className="absolute top-[80px] left-0 right-0 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 max-h-48 overflow-hidden z-50">
+                          <FlatList
+                            data={filteredFacilities}
+                            keyExtractor={(item) => item.hname}
+                            keyboardShouldPersistTaps="handled"
+                            renderItem={({ item }) => (
+                              <TouchableOpacity
+                                className="p-3 border-b border-gray-100 dark:border-gray-700 active:bg-gray-50 dark:active:bg-gray-700"
+                                onPress={() => {
+                                  setFormData({
+                                    ...formData,
+                                    hospital: {
+                                      hname: item.hname,
+                                      haddrs: item.address,
+                                    },
+                                  });
+                                  setSearch(""); // clear search logic or keep it? usually clear or set to name
+                                  setShowSuggestion(false);
+                                }}
+                              >
+                                <AppText className="font-semibold text-sm">{item.hname}</AppText>
+                                <AppText className="text-xs text-gray-500">{item.address}</AppText>
+                              </TouchableOpacity>
+                            )}
+                          />
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                )}
+
+              </View>
+
+              {/* Footer Actions */}
+              <View className="flex-row gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+                {/* 
+                   Logic simplified: 
+                   If User route: Next -> user details saved (or updated in state)
+                   If Facility route: Select -> Save
+                 */}
+
+                {currentRoute === "user" ? (
+                  <AppButton
+                    className="flex-1"
+                    variant="primary"
+                    onPress={handleSave} // Simplified flow: just save user details directly
+                    disabled={!formData.name}
+                    isLoading={isSaving}
+                  >
+                    Save User Details
+                  </AppButton>
+                ) : (
+                  // Facility Mode
+                  <AppButton
+                    className="flex-1"
+                    variant="primary"
+                    onPress={handleSave}
+                    disabled={!formData.hospital.hname}
+                    isLoading={isSaving}
+                  >
+                    Save Facility
+                  </AppButton>
+                )}
+              </View>
+
+            </>
+          )}
+
         </AppCard>
-      ) : (
-        <>
-          {/* steps */}
-          <View className="flex-1 flex-col w-full mt-4 px-2">
-            {/* Step 1 */}
-            {currentRoute === "user" && (
-              <View className="px-6 justify-center items-center space-y-6 w-full">
-                {/* Name */}
-                <View className="w-full">
-                  <AppText
-                    //  style={{ color: textColor }}
-                    className="block text-sm font-medium mb-2"
-                  >
-                    SPF Name
-                  </AppText>
-                  <View className="relative">
-                    <View className="absolute left-4 top-1/2 transform -translate-y-1/2 ">
-                      <Feather
-                        name="user"
-                        size={hp(3)}
-                        color={mode === "dark" ? "#9ca3af" : "#4b5563"}
-                      />
-                    </View>
+      </View>
 
-                    <TextInput
-                      value={formData.name}
-                      onChangeText={(t) =>
-                        setFormData({ ...formData, name: t })
-                      }
-                      placeholderTextColor={
-                        mode === "dark" ? "#9ca3af" : "#4b5563"
-                      }
-                      placeholder="Survey Focal Person Name"
-                      className={`w-full pl-12 text-lg pr-12 py-5 rounded-xl ${textColor} border border-[#0a7ea4] focus:border-blue-500 focus:outline-none transition-colors`}
-                    />
-                  </View>
-                </View>
-                {/* Signature-btn */}
-                <View className="w-full mt-5">
-                  <TouchableOpacity
-                    onPress={() => setOpenSignModal((prev) => !prev)}
-                    className={`flex flex-row justify-center gap-5 items-center w-full px-12 py-5 rounded-xl ${textColor} border border-[#0a7ea4] focus:border-blue-500 focus:outline-none transition-colors`}
-                  >
-                    <Feather
-                      name="tag"
-                      size={hp(3)}
-                      color={mode === "dark" ? "#9ca3af" : "#4b5563"}
-                    />
-                    <AppText>Sign (Optional)</AppText>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-            {/* Step 2 */}
-            {currentRoute === "facility" && (
-              <View className="px-6 justify-center items-center space-y-6 w-full">
-                <View className="w-full">
-                  <AppText
-                    //  style={{ color: textColor }}
-                    className="block text-sm font-medium mb-2"
-                  >
-                    Choose health facility
-                  </AppText>
-                  <View className="relative">
-                    <View className="absolute left-4 top-1/2 transform -translate-y-1/2 ">
-                      <Feather
-                        name="search"
-                        size={hp(3)}
-                        color={mode === "dark" ? "#9ca3af" : "#4b5563"}
-                      />
-                    </View>
-
-                    <TextInput
-                      value={
-                        formData.hospital.hname
-                          ? formData.hospital.hname
-                          : search
-                      }
-                      onChangeText={(t) => {
-                        setSearch(t);
-                        setShowSuggestion((prev) => !prev);
-                      }}
-                      placeholder={"search"}
-                      placeholderTextColor={
-                        mode === "dark" ? "#9ca3af" : "#4b5563"
-                      }
-                      className={`w-full pl-12 pr-12 py-5 rounded-xl ${textColor} border border-[#0a7ea4] focus:border-blue-500 focus:outline-none transition-colors`}
-                    />
-                  </View>
-                  {showSuggestion && (
-                    <Pressable
-                      onPress={() => setShowSuggestion((prev) => !prev)}
-                    >
-                      <AppCard className="rounded-xl p-4">
-                        <FlatList
-                          data={filteredFacilities}
-                          keyExtractor={(item) => item.hname}
-                          renderItem={({ item }) => (
-                            <TouchableOpacity
-                              onPress={() => {
-                                setFormData({
-                                  ...formData,
-                                  hospital: {
-                                    hname: item.hname,
-                                    haddrs: item.address,
-                                  },
-                                });
-                                setShowSuggestion(false);
-                              }}
-                              className={`p-3 ${
-                                formData.hospital.hname === item.hname
-                                  ? "border-blue-600 bg-[#0a7ea4]"
-                                  : "border-gray-200"
-                              }`}
-                            >
-                              <AppText className="font-semibold">
-                                {item.hname}
-                              </AppText>
-                            </TouchableOpacity>
-                          )}
-                          style={{ maxHeight: 160 }}
-                        />
-                      </AppCard>
-                    </Pressable>
-                  )}
-                </View>
-              </View>
-            )}
-          </View>
-          {/* bottom navigation tab */}
-          <View className="absolute bottom-32 left-0 right-0 px-8 w-full">
-            {step === 0 && (
-              <View className="items-end">
-                <TouchableOpacity
-                  className={`py-3 w-2/6 rounded-xl ${
-                    formData.name ? "bg-[#0a7ea4]" : "border border-[#0a7ea4]"
-                  }`}
-                  disabled={!formData.name}
-                  onPress={handleNext}
-                >
-                  <AppText className="text-center font-semibold">Next</AppText>
-                </TouchableOpacity>
-              </View>
-            )}
-            {step === 1 && (
-              <View className="flex flex-row items-center justify-between w-full">
-                <TouchableOpacity
-                  className="py-3 w-2/6 rounded-xl bg-[#0a7ea4]"
-                  onPress={handleBack}
-                >
-                  <AppText className="text-center font-semibold">Back</AppText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  className={`py-3 w-2/6 rounded-xl ${
-                    formData.hospital.hname
-                      ? "bg-[#0a7ea4]"
-                      : "border border-[#0a7ea4]"
-                  }`}
-                  disabled={!formData.hospital.hname}
-                  onPress={handleNext}
-                >
-                  <AppText className="text-white text-center font-semibold">
-                    Next
-                  </AppText>
-                </TouchableOpacity>
-              </View>
-            )}
-            {step === 2 && (
-              <View className="flex flex-row items-center justify-between w-full ">
-                <TouchableOpacity
-                  className="py-3 w-2/6 rounded-xl bg-[#0a7ea4]"
-                  onPress={handleBack}
-                >
-                  <AppText className="text-white text-center font-semibold">
-                    Back
-                  </AppText>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  className={`py-3 w-2/6 rounded-xl flex-row justify-center ${
-                    formData.hospital.hname
-                      ? "bg-[#0a7ea4]"
-                      : "border border-[#0a7ea4]"
-                  }`}
-                  disabled={!formData.hospital.hname || isSaving}
-                  onPress={handleSave}
-                >
-                  {isSaving ? (
-                    <>
-                      <ActivityIndicator color="#fff" />
-                      <Text className="text-white font-semibold ml-2">
-                        Saving...
-                      </Text>
-                    </>
-                  ) : (
-                    <Text className="text-white text-center font-semibold">
-                      Finish
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        </>
-      )}
-
+      {/* Nested Signature Modal */}
       {openSignModal && (
         <SignatureModal
           formData={formData}
-          onClose={() => setOpenSignModal((prev) => !prev)}
+          setFormData={setFormData} // Pass setter to update signature
+          onClose={() => setOpenSignModal(false)}
         />
       )}
     </Modal>
