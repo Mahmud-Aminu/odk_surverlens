@@ -2,13 +2,16 @@ import { db } from "@/firebaseConfig";
 import { odkStorage } from "@/utils/StorageManager";
 import { SubmissionEntry, SubmissionQueue } from "@/utils/SubmissionQueue";
 import {
-    collection,
-    doc,
-    getCountFromServer,
-    query,
-    setDoc,
-    Timestamp,
-    where,
+  addDoc,
+  collection,
+  doc,
+  FirestoreError,
+  getCountFromServer,
+  query,
+  serverTimestamp,
+  setDoc,
+  Timestamp,
+  where,
 } from "firebase/firestore";
 
 export const getAfpCasesCount = async (userUid: string): Promise<number> => {
@@ -24,8 +27,48 @@ export const getAfpCasesCount = async (userUid: string): Promise<number> => {
   }
 };
 
-export const sendDocument = async (data: any) => {
-  console.log(data);
+/**
+ * Production-ready AFP document submission
+ */
+export const sendDocument = async (
+  data: Record<string, any>,
+  userUid: string,
+): Promise<{ success: boolean; id?: string; error?: string }> => {
+  try {
+    // ---- Guardrails (fail fast) ----
+    if (!userUid) {
+      throw new Error("User UID is required");
+    }
+
+    if (!data || typeof data !== "object") {
+      throw new Error("Invalid document payload");
+    }
+
+    // ---- Construct payload (immutable) ----
+    const payload = {
+      ...data,
+      uid: userUid,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    };
+
+    // ---- Firestore write ----
+    const docRef = await addDoc(collection(db, "afp"), payload);
+
+    return {
+      success: true,
+      id: docRef.id,
+    };
+  } catch (error) {
+    const err = error as FirestoreError;
+
+    console.error("AFP submission failed:", err);
+
+    return {
+      success: false,
+      error: err.message || "Failed to submit AFP document",
+    };
+  }
 };
 
 export const sendWeeklyReport = async (data: any, type: string) => {

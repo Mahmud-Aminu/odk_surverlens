@@ -60,10 +60,17 @@
               "label": "5. Father's Name",
               "required": true
             },
+
             {
               "type": "text",
               "name": "mother_name",
               "label": "6. Mother's Name",
+              "required": true
+            },
+            {
+              "type": "integer",
+              "name": "number_of_parents",
+              "label": "7. Number of Parents",
               "required": true
             }
           ]
@@ -156,12 +163,6 @@
               "required": true
             },
             {
-              "type": "text",
-              "name": "notified_by",
-              "label": "Notified by: (Name and Sign)",
-              "required": true
-            },
-            {
               "type": "group",
               "name": "action_taken",
               "label": "Action Taken",
@@ -225,9 +226,9 @@
               "required": true
             },
             {
-              "type": "text",
-              "name": "FP_signature",
-              "label": "Focal Person Signature",
+              "type": "integer",
+              "name": "FP_number",
+              "label": "Focal Person Number",
               "required": true
             }
           ]
