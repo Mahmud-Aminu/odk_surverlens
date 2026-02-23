@@ -29,10 +29,7 @@ const MenuGrid = () => {
             for (const inst of instances) {
               if (inst.status === "incomplete") {
                 drafts++;
-              } else if (
-                inst.status === "complete" ||
-                inst.status === "submitted"
-              ) {
+              } else if (inst.status === "complete") {
                 finalized++;
               }
             }
@@ -46,7 +43,7 @@ const MenuGrid = () => {
       };
 
       calculateCounts();
-    }, [localForms])
+    }, [localForms]),
   );
 
   const menuItems = [

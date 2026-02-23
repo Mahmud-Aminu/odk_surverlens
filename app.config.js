@@ -11,6 +11,11 @@ export default ({ config }) => {
     scheme: "surveilPro",
     userInterfaceStyle: "automatic",
     newArchEnabled: true,
+    splash: {
+      image: "./assets/images/splash.png",
+      resizeMode: "contain",
+      backgroundColor: "#1a202c",
+    },
     ios: { supportsTablet: true },
     android: {
       adaptiveIcon: {

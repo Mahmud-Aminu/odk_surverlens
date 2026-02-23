@@ -1,11 +1,12 @@
 import { AppButton, AppCard, AppContainer, AppText } from "@/components";
 import { FormHeader } from "@/components/home/Header";
+import { useAuth } from "@/context/AuthContext";
 import { sendDocument } from "@/services/SubmissionService";
 import { odkStorage } from "@/utils/StorageManager";
 import { Feather } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, View } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, FlatList, Modal, View } from "react-native";
 
 interface FinalizedForm {
   form: any;
@@ -17,7 +18,13 @@ const SendFinalizedFormsScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [finalizedForms, setFinalizedForms] = useState<FinalizedForm[]>([]);
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [sendStatus, setSendStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
+  const [sendMessage, setSendMessage] = useState("");
   const route = useRouter();
+
+  const { user } = useAuth();
 
   const interpolateInstanceName = (template: string, formData: any): string => {
     if (!template) return formData?.displayName || "Form Instance";
@@ -28,7 +35,7 @@ const SendFinalizedFormsScreen: React.FC = () => {
     });
   };
 
-  const loadFinalizedForms = async () => {
+  const loadFinalizedForms = useCallback(async () => {
     try {
       setLoading(true);
       // Load all forms and their instances, then filter finalized/complete instances
@@ -38,7 +45,7 @@ const SendFinalizedFormsScreen: React.FC = () => {
       for (const f of forms) {
         const instances = await odkStorage.listInstances(f.formId);
         for (const inst of instances) {
-          if (inst.status === "complete" || inst.status === "submitted") {
+          if (inst.status === "complete") {
             let displayName = inst.displayName;
             let instanceNameTemplate = f.instanceName;
 
@@ -53,9 +60,9 @@ const SendFinalizedFormsScreen: React.FC = () => {
                     const formDef = JSON.parse(formDefResult.content);
                     if (formDef.metadata?.instanceName) {
                       instanceNameTemplate = formDef.metadata.instanceName;
-                      console.log(instanceNameTemplate)
+                      console.log(instanceNameTemplate);
                     }
-                  } catch (e) {
+                  } catch {
                     // JSON parse failed - skip
                   }
                 }
@@ -73,8 +80,8 @@ const SendFinalizedFormsScreen: React.FC = () => {
                   parsedData,
                 );
               }
-            } catch (e) {
-              console.warn("Failed to interpolate instance name:", e);
+            } catch {
+              console.warn("Failed to interpolate instance name");
             }
 
             allFinalized.push({ form: f, instance: inst, displayName });
@@ -83,20 +90,21 @@ const SendFinalizedFormsScreen: React.FC = () => {
       }
 
       setFinalizedForms(allFinalized);
-    } catch (e) {
-      console.warn("Failed to load finalized forms:", e);
+    } catch {
+      console.warn("Failed to load finalized forms");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadFinalizedForms();
-  }, []);
+  }, [loadFinalizedForms]);
 
   const handleSend = async (form: any, instance: any) => {
     const instanceId = instance.instanceId;
     setSendingId(instanceId);
+    setSendStatus("loading");
 
     try {
       // Log the form data before sending
@@ -107,9 +115,9 @@ const SendFinalizedFormsScreen: React.FC = () => {
 
       // Placeholder: actual send implementation depends on server config
       const parsed = JSON.parse(formData || "{}");
-      const data = JSON.stringify(parsed.data, null, 2);
+      const data = parsed.data || parsed;
 
-      await sendDocument(data)
+      await sendDocument(data, user?.id || "");
 
       // Mark instance as submitted locally for now
       await odkStorage.updateInstanceStatus(
@@ -118,12 +126,17 @@ const SendFinalizedFormsScreen: React.FC = () => {
         "submitted",
       );
 
-      Alert.alert("Success", "Form submitted successfully.");
+      setSendStatus("success");
+      setSendMessage("Form submitted successfully.");
 
-      // Refresh the list
-      // await loadFinalizedForms();
+      // Refresh the list after a delay
+      setTimeout(async () => {
+        setSendStatus("idle");
+        await loadFinalizedForms();
+      }, 2000);
     } catch (error: any) {
-      Alert.alert("Error", error.message || String(error));
+      setSendStatus("error");
+      setSendMessage(error.message || String(error));
     } finally {
       setSendingId(null);
     }
@@ -146,69 +159,112 @@ const SendFinalizedFormsScreen: React.FC = () => {
   }
 
   return (
-    <AppContainer className="flex-1 w-full">
-      <FormHeader
-        currentRoute={"Start a new form"}
-        goBack={() => route.replace("/(tabs)")}
-        onInfoPress={() => route.push(`/${"help"}` as never)}
-        onSettingsPress={() => route.push("/settings")}
-      />
+    <View>
+      <AppContainer className="flex-1 w-full">
+        <FormHeader
+          currentRoute={"Start a new form"}
+          goBack={() => route.replace("/(tabs)")}
+          onInfoPress={() => route.push(`/${"help"}` as never)}
+          onSettingsPress={() => route.push("/settings")}
+        />
 
-      {finalizedForms.length === 0 ? (
-        <View className="flex-1 items-center justify-center px-6">
-          <View className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center mb-4">
-            <Feather name="file-text" size={36} color="#9ca3af" />
+        {finalizedForms.length === 0 ? (
+          <View className="flex-1 items-center justify-center px-6">
+            <View className="w-20 h-20 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center mb-4">
+              <Feather name="file-text" size={36} color="#9ca3af" />
+            </View>
+            <AppText className="text-gray-400 text-base text-center">
+              No finalized form Found.
+            </AppText>
+            <AppText className="text-gray-400 text-xs text-center mt-1">
+              Start filling a form and finalized it or finalized a draft form.
+            </AppText>
           </View>
-          <AppText className="text-gray-400 text-base text-center">
-            No finalized form Found.
-          </AppText>
-          <AppText className="text-gray-400 text-xs text-center mt-1">
-            Start filling a form and finalized it or finalized a draft form.
-          </AppText>
-        </View>
-      ) : (
-        <View className="flex flex-col gap-3 justify-center px-4 w-full flex-1">
-          <AppText type="body" className="font-bold tracking-wide mt-6 mb-2">
-            Finalized Forms ({finalizedForms.length})
-          </AppText>
+        ) : (
+          <View className="flex flex-col gap-3 justify-center px-4 w-full flex-1">
+            <AppText type="body" className="font-bold tracking-wide mt-6 mb-2">
+              Finalized Forms ({finalizedForms.length})
+            </AppText>
 
-          <FlatList
-            data={finalizedForms}
-            keyExtractor={(item) => item.instance.instanceId}
-            contentContainerStyle={{ paddingBottom: 20 }}
-            renderItem={({ item }) => (
-              <AppCard className="px-4 py-4 mb-3">
-                <View className="flex-row justify-between items-center mb-3">
-                  <View className="flex-1">
-                    <AppText
-                      type="subheading"
-                      className="font-bold tracking-wide text-lg text-gray-900 dark:text-gray-100"
-                    >
-                      {item.displayName}
-                    </AppText>
-                    <AppText type="body" className="text-xs mt-1">
-                      Finalized:{" "}
-                      {new Date(item.instance.createdAt).toLocaleDateString()}
-                    </AppText>
+            <FlatList
+              data={finalizedForms}
+              keyExtractor={(item) => item.instance.instanceId}
+              contentContainerStyle={{ paddingBottom: 20 }}
+              renderItem={({ item }) => (
+                <AppCard className="px-4 py-4 mb-3">
+                  <View className="flex-row justify-between items-center mb-3">
+                    <View className="flex-1">
+                      <AppText
+                        type="subheading"
+                        className="font-bold tracking-wide text-lg text-gray-900 dark:text-gray-100"
+                      >
+                        {item.displayName}
+                      </AppText>
+                      <AppText type="body" className="text-xs mt-1">
+                        Finalized:{" "}
+                        {new Date(item.instance.createdAt).toLocaleDateString()}
+                      </AppText>
+                    </View>
                   </View>
-                </View>
 
+                  <AppButton
+                    onPress={() => handleSend(item.form, item.instance)}
+                    isLoading={sendingId === item.instance.instanceId}
+                    disabled={
+                      sendingId !== null &&
+                      sendingId !== item.instance.instanceId
+                    }
+                    variant="primary"
+                    size="sm"
+                    title="Send Form"
+                  />
+                </AppCard>
+              )}
+            />
+          </View>
+        )}
+      </AppContainer>
+      <Modal
+        visible={sendStatus !== "idle"}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setSendStatus("idle")}
+      >
+        <View className="flex-1 justify-center items-center bg-black bg-opacity-50">
+          <View className="bg-white dark:bg-gray-800 p-6 rounded-lg w-80 items-center">
+            {sendStatus === "loading" && (
+              <>
+                <ActivityIndicator size="large" color="#2563eb" />
+                <AppText className="mt-4 text-center">Sending form...</AppText>
+              </>
+            )}
+            {sendStatus === "success" && (
+              <>
+                <Feather name="check-circle" size={48} color="#10b981" />
+                <AppText className="mt-4 text-center font-bold">
+                  {sendMessage}
+                </AppText>
+              </>
+            )}
+            {sendStatus === "error" && (
+              <>
+                <Feather name="x-circle" size={48} color="#ef4444" />
+                <AppText className="mt-4 text-center font-bold text-red-500">
+                  {sendMessage}
+                </AppText>
                 <AppButton
-                  onPress={() => handleSend(item.form, item.instance)}
-                  isLoading={sendingId === item.instance.instanceId}
-                  disabled={
-                    sendingId !== null && sendingId !== item.instance.instanceId
-                  }
+                  onPress={() => setSendStatus("idle")}
                   variant="primary"
                   size="sm"
-                  title="Send Form"
+                  title="Close"
+                  className="mt-4"
                 />
-              </AppCard>
+              </>
             )}
-          />
+          </View>
         </View>
-      )}
-    </AppContainer>
+      </Modal>
+    </View>
   );
 };
 

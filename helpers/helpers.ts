@@ -1,21 +1,28 @@
-export const getCurrentWeekNumber = (): number => {
+export const getISOWeekInfo = () => {
   const now = new Date();
 
-  // Copy date so we don't mutate
-  const date = new Date(
+  // Get Monday of current week
+  const day = now.getDay();
+  const diffToMonday = (day === 0 ? -6 : 1) - day;
+
+  const weekStart = new Date(now);
+  weekStart.setHours(0, 0, 0, 0);
+  weekStart.setDate(now.getDate() + diffToMonday);
+
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 7); // exclusive upper bound
+
+  // ISO week number
+  const temp = new Date(
     Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()),
   );
+  const dayNum = temp.getUTCDay() || 7;
+  temp.setUTCDate(temp.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(temp.getUTCFullYear(), 0, 1));
+  const weekNumber = Math.ceil(((+temp - +yearStart) / 86400000 + 1) / 7);
 
-  // Set to nearest Thursday (ISO week rule)
-  const dayNum = date.getUTCDay() || 7;
-  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
-
-  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-  const weekNo = Math.ceil(((+date - +yearStart) / 86400000 + 1) / 7);
-
-  return weekNo;
+  return { weekStart, weekEnd, weekNumber };
 };
-
 export const getCurrentWeekRange = (): string => {
   const now = new Date();
   const day = now.getDay(); // 0 = Sunday

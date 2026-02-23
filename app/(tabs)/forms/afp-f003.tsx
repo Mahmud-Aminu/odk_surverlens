@@ -97,6 +97,15 @@ export default function AFPWeeklyReportScreen() {
                 value={String(form.reporting_week)}
                 editable={false}
               />
+
+              <AppTextInput
+                label="Period included in the report"
+                value={String(form.report_date)}
+                keyboardType="numeric"
+                onChangeText={(v) =>
+                  handleChange("afp_cases_reported", Number(v))
+                }
+              />
               <AppTextInput
                 label="Year"
                 value={String(form.year)}
